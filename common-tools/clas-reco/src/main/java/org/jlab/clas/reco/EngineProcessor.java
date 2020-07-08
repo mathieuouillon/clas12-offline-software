@@ -56,7 +56,7 @@ public class EngineProcessor {
         String[] names = new String[]{
             "MAGFIELDS",
             "DCHB","FTOFHB","EC","HTCC","EBHB",
-            "DCTB","FTOFTB","EBTB"
+            "DCTB","FTOFTB","EBTB","AHDC"
         };
 
         String[] services = new String[]{
@@ -68,7 +68,8 @@ public class EngineProcessor {
             "org.jlab.service.eb.EBHBEngine",
             "org.jlab.service.dc.DCTBEngine",
             "org.jlab.service.ftof.FTOFTBEngine",
-            "org.jlab.service.eb.EBTBEngine"
+            "org.jlab.service.eb.EBTBEngine",
+                "org.jlab.rec.ahdc.services.AHDCReconstruction"
         };
 
         for(int i = 0; i < names.length; i++){
