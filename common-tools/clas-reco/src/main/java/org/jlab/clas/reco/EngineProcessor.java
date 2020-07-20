@@ -69,7 +69,7 @@ public class EngineProcessor {
             "org.jlab.service.dc.DCTBEngine",
             "org.jlab.service.ftof.FTOFTBEngine",
             "org.jlab.service.eb.EBTBEngine",
-                "org.jlab.rec.ahdc.services.AHDCReconstruction"
+            "org.jlab.rec.ahdc.services.AHDCReconstruction"
         };
 
         for(int i = 0; i < names.length; i++){

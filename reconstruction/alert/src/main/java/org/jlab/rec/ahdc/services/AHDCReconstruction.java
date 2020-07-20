@@ -4,6 +4,10 @@ import org.jlab.clas.reco.ReconstructionEngine;
 import org.jlab.io.base.DataEvent;
 import org.jlab.rec.ahdc.banks.RecoBankWriter;
 import org.jlab.rec.ahdc.banks.HitReader;
+import org.jlab.rec.ahdc.cluster.Cluster;
+import org.jlab.rec.ahdc.cluster.ClusterFinder;
+import org.jlab.rec.ahdc.cross.Cross;
+import org.jlab.rec.ahdc.cross.CrossMaker;
 import org.jlab.rec.ahdc.hit.Hit;
 
 import java.util.ArrayList;
@@ -41,6 +45,14 @@ public class AHDCReconstruction extends ReconstructionEngine {
             hits.addAll(ahdc_hits);
         }
 
+        ClusterFinder clusterfinder = new ClusterFinder();
+        clusterfinder.findClusters(ahdc_hits);
+        ArrayList<Cluster> clusters = clusterfinder.getClusters();
+
+
+        CrossMaker crossmaker = new CrossMaker();
+        crossmaker.findCross(clusters);
+        ArrayList<Cross> crosses = crossmaker.getCrosses();
         return true;
     }
 
