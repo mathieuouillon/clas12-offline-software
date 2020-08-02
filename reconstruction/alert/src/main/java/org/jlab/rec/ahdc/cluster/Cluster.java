@@ -19,6 +19,7 @@ public class Cluster extends ArrayList<Hit> {
         this._R = _R;
         this._Phi = _Phi;
         this._Z = _Z;
+
     }
 
     public double get_R() {

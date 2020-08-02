@@ -8,6 +8,7 @@ public class Hit implements Comparable<Hit> {
     private int _Layer;
     private int _Wire;
     private double _Doca;
+    private boolean _Used = false;
 
     public Hit(int _Superlayer, int _Layer, int _Wire, double _Doca) {
         this._Superlayer = _Superlayer;
@@ -16,10 +17,19 @@ public class Hit implements Comparable<Hit> {
         this._Doca = _Doca;
     }
 
+    public Boolean get_Used() {
+        return _Used;
+    }
+
+    public void set_Used(Boolean _Used) {
+        this._Used = _Used;
+    }
 
     @Override
     public int compareTo(Hit arg0) {
-        if (this._Wire > arg0._Wire) {
+        if ((this._Superlayer == arg0._Superlayer && this._Layer == arg0._Layer && this._Wire > arg0._Wire)
+            || (this._Superlayer == arg0._Superlayer && this._Layer > arg0._Layer)
+            || (this._Superlayer > arg0._Superlayer)) {
             return 1;
         } else {
             return 0;

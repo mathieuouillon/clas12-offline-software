@@ -27,32 +27,29 @@ public class AHDCReconstruction extends ReconstructionEngine {
 
     @Override
     public boolean processDataEvent(DataEvent event) {
+        System.out.println("-------------------------------------------------------------");
+        System.out.println("++++++++++++++++++++++++++New event++++++++++++++++++++++++++");
+        System.out.println("-------------------------------------------------------------");
         RecoBankWriter rbc = new RecoBankWriter();
 
         HitReader hitRead = new HitReader();
         hitRead.fetch_AHDCHits(event);
-
-        List<Hit> hits = new ArrayList<Hit>();
-
         List<Hit> ahdc_hits = hitRead.get_AHDCHits();
-        for (int i = 0; i < ahdc_hits.size(); i++) {
-            System.out.println("Wire Number : " + ahdc_hits.get(i).get_Wire());
-        }
-        int MAXAHDCHITS = 100000;
-        if(ahdc_hits.size()> MAXAHDCHITS)
-            return true;
-        if (ahdc_hits != null && ahdc_hits.size() > 0) {
-            hits.addAll(ahdc_hits);
-        }
 
         ClusterFinder clusterfinder = new ClusterFinder();
         clusterfinder.findClusters(ahdc_hits);
-        ArrayList<Cluster> clusters = clusterfinder.getClusters();
-
+        ArrayList<Cluster> clusters = clusterfinder.get_Clusters();
 
         CrossMaker crossmaker = new CrossMaker();
         crossmaker.findCross(clusters);
         ArrayList<Cross> crosses = crossmaker.getCrosses();
+//        for(Cross cross : crosses){
+//            System.out.println("X : "+ cross.get_Point().x());
+//            System.out.println("Y : "+ cross.get_Point().y());
+//            System.out.println("Z : "+ cross.get_Point().z());
+//            System.out.println(" ");
+//        }
+
         return true;
     }
 
