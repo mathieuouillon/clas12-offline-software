@@ -67,14 +67,6 @@ public class ClusterFinder {
         }
     }
 
-    void PrintCluster(List<Hit> cluster){
-        System.out.print("cluster : ");
-        for(Hit hit2 : cluster) {
-            System.out.print(hit2.get_Wire() + ", " );
-        }
-        System.out.println(" ");
-    }
-
 
     void CreateCluster(Hit hit ,List<Hit> hits ,int superlayer, int layer, int combinesuperlayer, int combinelayer, int num_wire, int radius, int num_wire_combinehit, int radiuscombinehit){
         if(hit.get_Superlayer() == superlayer && hit.get_Layer() == layer && !hit.get_Used()) {
@@ -118,8 +110,8 @@ public class ClusterFinder {
                 double phi = (phi_hit + phi_combinehit) / 2;
                 Cluster clus = new Cluster((double) ((radiuscombinehit + radius) / 2), (phi_hit + phi_combinehit) / 2, Zfinal);
                 _Clusters.add(clus);
-                double X = 0.0;
-                double Y = 0.0;
+                double X;
+                double Y;
                 if(phi_hit<phi_combinehit){
                      X =  -(double) (radiuscombinehit + radius) / 2 * Math.sin(phi);
                      Y =  -(double) (radiuscombinehit + radius) / 2 * Math.cos(phi);}
@@ -148,5 +140,13 @@ public class ClusterFinder {
 
     public void set_Clusters(ArrayList<Cluster> _Clusters) {
         this._Clusters = _Clusters;
+    }
+
+    void PrintCluster(List<Hit> cluster){
+        System.out.print("cluster : ");
+        for(Hit hit2 : cluster) {
+            System.out.print(hit2.get_Wire() + ", " );
+        }
+        System.out.println(" ");
     }
 }

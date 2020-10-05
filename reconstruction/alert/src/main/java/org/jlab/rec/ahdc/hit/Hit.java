@@ -17,11 +17,11 @@ public class Hit implements Comparable<Hit> {
         this._Doca = _Doca;
     }
 
-    public Boolean get_Used() {
+    public boolean get_Used() {
         return _Used;
     }
 
-    public void set_Used(Boolean _Used) {
+    public void set_Used(boolean _Used) {
         this._Used = _Used;
     }
 
