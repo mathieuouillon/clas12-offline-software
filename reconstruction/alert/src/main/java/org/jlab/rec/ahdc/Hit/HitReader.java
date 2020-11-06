@@ -1,6 +1,5 @@
-package org.jlab.rec.ahdc.hit;
+package org.jlab.rec.ahdc.Hit;
 
-import org.jlab.rec.ahdc.hit.Hit;
 import org.jlab.io.base.DataBank;
 import org.jlab.io.base.DataEvent;
 
@@ -10,7 +9,6 @@ import java.util.List;
 public class HitReader {
 
     private List<Hit> _AHDCHits;
-
 
     public HitReader() {
     }
@@ -24,16 +22,15 @@ public class HitReader {
     }
 
     public void fetch_AHDCHits(DataEvent event){
-        // return if there is no AHDC bank
-        if (!event.hasBank("AHDC::tdc")) {
+
+        if (!event.hasBank("AHDC::adc")) {
             System.err.println("there is no AHDC bank ");
             _AHDCHits = new ArrayList<Hit>();
             return;
         }
 
-        // instantiates the list of hits
         List<Hit> hits = new ArrayList<Hit>();
-        // gets the AHDC dgtz bank
+
         DataBank bankDGTZ = event.getBank("AHDC::adc");
         int rows = bankDGTZ.rows();;
         int[] id = new int[rows];
@@ -46,7 +43,7 @@ public class HitReader {
             for (int i = 0; i < rows; i++) {
 
                 if (bankDGTZ.getFloat("adc", i) < 0) {
-                    continue; // ignore hits TDC hits with ADC==-1
+                    continue;
                 }
 
                 id[i] = i + 1;

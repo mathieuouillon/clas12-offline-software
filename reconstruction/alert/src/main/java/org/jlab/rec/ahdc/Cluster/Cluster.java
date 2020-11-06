@@ -1,6 +1,6 @@
-package org.jlab.rec.ahdc.cluster;
+package org.jlab.rec.ahdc.Cluster;
 
-import org.jlab.rec.ahdc.hit.Hit;
+import org.jlab.rec.ahdc.Hit.Hit;
 import java.util.ArrayList;
 
 /**

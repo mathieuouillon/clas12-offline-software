@@ -1,8 +1,8 @@
-package org.jlab.rec.ahdc.cross;
+package org.jlab.rec.ahdc.Cross;
 
 import org.jlab.geom.prim.Point3D;
 import org.jlab.geom.prim.Vector3D;
-import org.jlab.rec.ahdc.cluster.Cluster;
+import org.jlab.rec.ahdc.Cluster.Cluster;
 
 import java.util.ArrayList;
 

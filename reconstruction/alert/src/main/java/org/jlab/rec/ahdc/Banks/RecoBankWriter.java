@@ -1,8 +1,8 @@
-package org.jlab.rec.ahdc.banks;
+package org.jlab.rec.ahdc.Banks;
 
 import org.jlab.io.base.DataBank;
 import org.jlab.io.base.DataEvent;
-import org.jlab.rec.ahdc.hit.Hit;
+import org.jlab.rec.ahdc.Hit.Hit;
 import java.util.List;
 
 public class RecoBankWriter {

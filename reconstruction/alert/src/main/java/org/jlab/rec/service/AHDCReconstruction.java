@@ -2,13 +2,12 @@ package org.jlab.rec.service;
 
 import org.jlab.clas.reco.ReconstructionEngine;
 import org.jlab.io.base.DataEvent;
-import org.jlab.rec.ahdc.hit.HitReader;
-import org.jlab.rec.ahdc.banks.RecoBankWriter;
-import org.jlab.rec.ahdc.cluster.Cluster;
-import org.jlab.rec.ahdc.cluster.ClusterFinder;
-import org.jlab.rec.ahdc.cross.Cross;
-import org.jlab.rec.ahdc.cross.CrossMaker;
-import org.jlab.rec.ahdc.hit.Hit;
+import org.jlab.rec.ahdc.Hit.HitReader;
+import org.jlab.rec.ahdc.Cluster.Cluster;
+import org.jlab.rec.ahdc.Cluster.ClusterFinder;
+import org.jlab.rec.ahdc.Cross.Cross;
+import org.jlab.rec.ahdc.Cross.CrossMaker;
+import org.jlab.rec.ahdc.Hit.Hit;
 
 import java.util.ArrayList;
 import java.util.List;

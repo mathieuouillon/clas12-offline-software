@@ -1,4 +1,4 @@
-package org.jlab.rec.ahdc.hit;
+package org.jlab.rec.ahdc.Hit;
 
 
 public class Hit implements Comparable<Hit> {
@@ -26,7 +26,7 @@ public class Hit implements Comparable<Hit> {
     }
 
     @Override
-    public int compareTo(Hit arg0) {
+    public int compareTo(Hit arg0) { //TODO: A refaire correctement
         if ((this._Superlayer == arg0._Superlayer && this._Layer == arg0._Layer && this._Wire > arg0._Wire)
             || (this._Superlayer == arg0._Superlayer && this._Layer > arg0._Layer)
             || (this._Superlayer > arg0._Superlayer)) {

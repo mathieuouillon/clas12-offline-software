@@ -1,4 +1,4 @@
-package org.jlab.rec.ahdc.cross;
+package org.jlab.rec.ahdc.Cross;
 
 import org.jlab.geom.prim.Point3D;
 import org.jlab.geom.prim.Vector3D;
