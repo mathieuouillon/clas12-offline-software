@@ -34,7 +34,7 @@ public class HitReader {
         // instantiates the list of hits
         List<Hit> hits = new ArrayList<Hit>();
         // gets the AHDC dgtz bank
-        DataBank bankDGTZ = event.getBank("AHDC::tdc");
+        DataBank bankDGTZ = event.getBank("AHDC::adc");
         int rows = bankDGTZ.rows();;
         int[] id = new int[rows];
         int[] superlayer = new int[rows];
@@ -42,7 +42,7 @@ public class HitReader {
         int[] wire = new int[rows];
         float[] Doca = new float[rows];
 
-        if (event.hasBank("AHDC::tdc")) {
+        if (event.hasBank("AHDC::adc")) {
             for (int i = 0; i < rows; i++) {
 
                 if (bankDGTZ.getFloat("adc", i) < 0) {
