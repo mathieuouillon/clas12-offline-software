@@ -1,9 +1,9 @@
-package org.jlab.rec.ahdc.services;
+package org.jlab.rec.service;
 
 import org.jlab.clas.reco.ReconstructionEngine;
 import org.jlab.io.base.DataEvent;
+import org.jlab.rec.ahdc.hit.HitReader;
 import org.jlab.rec.ahdc.banks.RecoBankWriter;
-import org.jlab.rec.ahdc.banks.HitReader;
 import org.jlab.rec.ahdc.cluster.Cluster;
 import org.jlab.rec.ahdc.cluster.ClusterFinder;
 import org.jlab.rec.ahdc.cross.Cross;
@@ -16,21 +16,16 @@ import java.util.List;
 public class AHDCReconstruction extends ReconstructionEngine {
 
     public AHDCReconstruction() {
-        super("ALERT","mpaolone","1.0");
+        super("ALERT","ouillon","0.0.1");
     }
 
     @Override
     public boolean init() {
-        // TODO Auto-generated method stub
         return true;
     }
 
     @Override
     public boolean processDataEvent(DataEvent event) {
-        System.out.println("-------------------------------------------------------------");
-        System.out.println("++++++++++++++++++++++++++New event++++++++++++++++++++++++++");
-        System.out.println("-------------------------------------------------------------");
-        RecoBankWriter rbc = new RecoBankWriter();
 
         HitReader hitRead = new HitReader();
         hitRead.fetch_AHDCHits(event);
@@ -43,12 +38,6 @@ public class AHDCReconstruction extends ReconstructionEngine {
         CrossMaker crossmaker = new CrossMaker();
         crossmaker.findCross(clusters);
         ArrayList<Cross> crosses = crossmaker.getCrosses();
-//        for(Cross cross : crosses){
-//            System.out.println("X : "+ cross.get_Point().x());
-//            System.out.println("Y : "+ cross.get_Point().y());
-//            System.out.println("Z : "+ cross.get_Point().z());
-//            System.out.println(" ");
-//        }
 
         return true;
     }

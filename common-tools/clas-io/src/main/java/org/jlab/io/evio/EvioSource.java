@@ -98,7 +98,7 @@ public class EvioSource implements DataSource {
 		try {
 			evioReader = new EvioCompactReader(new File(filename));
 			currentEvent = 1;
-			currentFileEntries = evioReader.getEventCount();
+			currentFileEntries = evioReader.getEventCount()+1;
 			storeByteOrder = evioReader.getFileByteOrder();
 			System.out.println("****** opened FILE [] ** NEVENTS = " + currentFileEntries + " *******");
 			// TODO Auto-generated method stub
