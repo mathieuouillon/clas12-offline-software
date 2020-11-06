@@ -1,4 +1,4 @@
-package org.jlab.rec.ahdc.banks;
+package org.jlab.rec.ahdc.hit;
 
 import org.jlab.rec.ahdc.hit.Hit;
 import org.jlab.io.base.DataBank;
