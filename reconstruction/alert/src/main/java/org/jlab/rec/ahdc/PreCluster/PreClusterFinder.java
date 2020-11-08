@@ -7,13 +7,12 @@ import java.util.List;
 
 public class PreClusterFinder {
 
-    private List<PreCluster> _AHDCPreCluster;
-
-    public List<PreCluster> get_AHDCPreCluster() {
+    private ArrayList<PreCluster> _AHDCPreCluster;
+    public ArrayList<PreCluster> get_AHDCPreCluster() {
         return _AHDCPreCluster;
     }
 
-    public void set_AHDCPreCluster(List<PreCluster> _AHDCPreCluster) {
+    public void set_AHDCPreCluster(ArrayList<PreCluster> _AHDCPreCluster) {
         this._AHDCPreCluster = _AHDCPreCluster;
     }
 
@@ -37,6 +36,17 @@ public class PreClusterFinder {
             }
             expect = hit;
 
+        }
+
+        for(ArrayList<Hit> list : result ){
+            double pre_phi = 0;
+            int count = 0;
+            for(Hit hit : list){
+                pre_phi += hit.get_Phi_0() ;
+                count ++;
+            }
+            pre_phi /= count;
+            _AHDCPreCluster.add(new PreCluster( list.get(0).get_Superlayer(), list.get(0).get_Layer(), 0, list.get(0).get_Radius(), pre_phi ));
         }
     }
 }

@@ -8,13 +8,31 @@ public class Hit implements Comparable<Hit> {
     private int _Layer;
     private int _Wire;
     private double _Doca;
+    private double _Phi_0;
+    private double _Radius;
+    private double _Numwire;
 
     public Hit(int _Superlayer, int _Layer, int _Wire, double _Doca) {
         this._Superlayer = _Superlayer;
         this._Layer = _Layer;
         this._Wire = _Wire;
         this._Doca = _Doca;
+        if(this._Superlayer == 0 && this._Layer == 0){calcRadiusAndPhi(32, 47);}
+        if(this._Superlayer == 1 && this._Layer == 0){calcRadiusAndPhi(38, 56);}
+        if(this._Superlayer == 1 && this._Layer == 1){calcRadiusAndPhi(42, 56);}
+        if(this._Superlayer == 2 && this._Layer == 0){calcRadiusAndPhi(48, 72);}
+        if(this._Superlayer == 2 && this._Layer == 1){calcRadiusAndPhi(52, 72);}
+        if(this._Superlayer == 3 && this._Layer == 0){calcRadiusAndPhi(58, 87);}
+        if(this._Superlayer == 3 && this._Layer == 1){calcRadiusAndPhi(62, 87);}
+        if(this._Superlayer == 4 && this._Layer == 0){calcRadiusAndPhi(68, 99);}
     }
+
+    private void calcRadiusAndPhi(double radius, double numwire){
+        this._Phi_0 = (this._Wire-1)* Math.toRadians(360/numwire);
+        this._Radius = radius;
+        this._Numwire = numwire;
+    }
+
 
     public String toString(){
         return "Hit : Superlayer : " + this._Superlayer + " Layer : " + this._Layer + " Wire : " + this._Wire;
@@ -69,6 +87,30 @@ public class Hit implements Comparable<Hit> {
 
     public void set_Doca(double _Doca) {
         this._Doca = _Doca;
+    }
+
+    public double get_Phi_0() {
+        return _Phi_0;
+    }
+
+    public void set_Phi_0(double _Phi_0) {
+        this._Phi_0 = _Phi_0;
+    }
+
+    public double get_Radius() {
+        return _Radius;
+    }
+
+    public void set_Radius(double _Radius) {
+        this._Radius = _Radius;
+    }
+
+    public double get_Numwire() {
+        return _Numwire;
+    }
+
+    public void set_Numwire(double _Numwire) {
+        this._Numwire = _Numwire;
     }
 
 }

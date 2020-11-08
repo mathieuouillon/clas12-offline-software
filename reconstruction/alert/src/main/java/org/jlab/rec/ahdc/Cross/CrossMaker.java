@@ -14,22 +14,20 @@ public class CrossMaker {
 
     private ArrayList<Cross> crosses = new ArrayList<Cross>();
 
-    public void findCross(ArrayList<Cluster> allclusters){
-        for(Cluster clus : allclusters){
-            double x = clus.get_R()*Math.cos(clus.get_Phi());
-            double y = clus.get_R()*Math.sin(clus.get_Phi());
-            double z = clus.get_Z();
-            Cross cross = new Cross(new Point3D(x,y,z), new Vector3D());
-            crosses.add(cross);
+    public void findCross(ArrayList<Cluster> ahdc_cluster){
+        for(Cluster cluster : ahdc_cluster){
+            double X = - cluster.get_R() * Math.sin(cluster.get_Phi()) ;
+            double Y = - cluster.get_R() * Math.cos(cluster.get_Phi());
+            double Z = cluster.get_Z();
+            crosses.add(new Cross(X,Y,Z));
         }
-
     }
 
-    public ArrayList<Cross> getCrosses() {
+    public ArrayList<Cross> get_Crosses() {
         return crosses;
     }
 
-    public void setCrosses(ArrayList<Cross> crosses) {
+    public void set_Crosses(ArrayList<Cross> crosses) {
         this.crosses = crosses;
     }
 }

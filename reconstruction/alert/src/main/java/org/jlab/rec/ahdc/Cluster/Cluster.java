@@ -1,13 +1,9 @@
 package org.jlab.rec.ahdc.Cluster;
 
 import org.jlab.rec.ahdc.Hit.Hit;
+import org.jlab.rec.ahdc.PreCluster.PreCluster;
+
 import java.util.ArrayList;
-
-/**
- * Cluster is list of hit that are grouped together
- * according to the algorithm of the ClusterFinder class
- */
-
 
 public class Cluster extends ArrayList<Hit> {
     private double _R;
@@ -15,11 +11,10 @@ public class Cluster extends ArrayList<Hit> {
     private double _Z;
 
 
-    public Cluster(double _R, double _Phi, double _Z) {
-        this._R = _R;
-        this._Phi = _Phi;
-        this._Z = _Z;
-
+    public Cluster(PreCluster precluster, PreCluster otherprecluster) {
+        this._R = ( precluster.get_Radius() + otherprecluster.get_Radius()) /2;
+        this._Phi = (precluster.get_Phi_0() + otherprecluster.get_Phi_0())/2;
+        this._Z = ((otherprecluster.get_Phi_0() - precluster.get_Phi_0())/(Math.toRadians(20)*Math.pow(-1,precluster.get_Superlayer()) - Math.toRadians(20)*Math.pow(-1,otherprecluster.get_Superlayer())))*300-150;
     }
 
     public double get_R() {

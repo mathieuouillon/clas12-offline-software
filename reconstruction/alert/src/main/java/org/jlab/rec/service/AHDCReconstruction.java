@@ -8,6 +8,7 @@ import org.jlab.rec.ahdc.Cluster.ClusterFinder;
 import org.jlab.rec.ahdc.Cross.Cross;
 import org.jlab.rec.ahdc.Cross.CrossMaker;
 import org.jlab.rec.ahdc.Hit.Hit;
+import org.jlab.rec.ahdc.PreCluster.PreCluster;
 import org.jlab.rec.ahdc.PreCluster.PreClusterFinder;
 
 import java.util.ArrayList;
@@ -34,15 +35,15 @@ public class AHDCReconstruction extends ReconstructionEngine {
         // II) Create PreCluster
         PreClusterFinder preclusterfinder = new PreClusterFinder();
         preclusterfinder.findPreCluster(ahdc_hits);
-        ArrayList<Cluster> precluster = preclusterfinder.get_PreCluster();
+        ArrayList<PreCluster> ahdc_precluster = preclusterfinder.get_AHDCPreCluster();
 
         ClusterFinder clusterfinder = new ClusterFinder();
-        clusterfinder.findClusters(ahdc_hits);
-        ArrayList<Cluster> clusters = clusterfinder.get_Clusters();
+        clusterfinder.findCluster(ahdc_precluster);
+        ArrayList<Cluster> ahdc_cluster = clusterfinder.get_AHDCClusters();
 
         CrossMaker crossmaker = new CrossMaker();
-        crossmaker.findCross(clusters);
-        ArrayList<Cross> crosses = crossmaker.getCrosses();
+        crossmaker.findCross(ahdc_cluster);
+        ArrayList<Cross> ahdc_cross = crossmaker.get_Crosses();
 
         return true;
     }

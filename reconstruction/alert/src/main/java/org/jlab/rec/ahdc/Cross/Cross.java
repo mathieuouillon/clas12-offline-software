@@ -5,62 +5,39 @@ import org.jlab.geom.prim.Vector3D;
 
 public class Cross {
 
+    private double _X;
+    private double _Y;
 
-
-    private double _Radius;
-    private Point3D _Point;
-    private Vector3D _Dir;
-
-    public Point3D get_PointErr() {
-        return _PointErr;
+    public double get_X() {
+        return _X;
     }
 
-    public void set_PointErr(Point3D _PointErr) {
-        this._PointErr = _PointErr;
+    public void set_X(double _X) {
+        this._X = _X;
     }
 
-    private Point3D _PointErr;
-
-
-
-    private double _Phi;
-
-    public Point3D get_Point() {
-        return _Point;
+    public double get_Y() {
+        return _Y;
     }
 
-    public void set_Point(Point3D _Point) {
-        this._Point = _Point;
+    public void set_Y(double _Y) {
+        this._Y = _Y;
     }
 
-    public Vector3D get_Dir() {
-        return _Dir;
+    public double get_Z() {
+        return _Z;
     }
 
-    public void set_Dir(Vector3D _Dir) {
-        this._Dir = _Dir;
+    public void set_Z(double _Z) {
+        this._Z = _Z;
     }
 
-    public double get_Radius() {
-        return _Radius;
+    private double _Z;
+
+
+    public Cross(double X, double Y, double Z) {
+        this._X = X;
+        this._Y = Y;
+        this._Z = Z;
     }
-
-    public void set_Radius(double _Radius) {
-        this._Radius = _Radius;
-    }
-
-    public double get_Phi() {
-        return _Phi;
-    }
-
-    public void set_Phi(double _Phi) {
-        this._Phi = _Phi;
-    }
-
-    public Cross(Point3D _Point, Vector3D _Dir) {
-        this._Point = _Point;
-        this._Dir = _Dir;
-    }
-
-
 }
