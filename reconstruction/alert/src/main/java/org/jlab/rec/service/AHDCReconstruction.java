@@ -8,6 +8,7 @@ import org.jlab.rec.ahdc.Cluster.ClusterFinder;
 import org.jlab.rec.ahdc.Cross.Cross;
 import org.jlab.rec.ahdc.Cross.CrossMaker;
 import org.jlab.rec.ahdc.Hit.Hit;
+import org.jlab.rec.ahdc.PreCluster.PreClusterFinder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,10 +26,15 @@ public class AHDCReconstruction extends ReconstructionEngine {
 
     @Override
     public boolean processDataEvent(DataEvent event) {
-
+        // I) Read hit
         HitReader hitRead = new HitReader();
         hitRead.fetch_AHDCHits(event);
         List<Hit> ahdc_hits = hitRead.get_AHDCHits();
+
+        // II) Create PreCluster
+        PreClusterFinder preclusterfinder = new PreClusterFinder();
+        preclusterfinder.findPreCluster(ahdc_hits);
+        ArrayList<Cluster> precluster = preclusterfinder.get_PreCluster();
 
         ClusterFinder clusterfinder = new ClusterFinder();
         clusterfinder.findClusters(ahdc_hits);

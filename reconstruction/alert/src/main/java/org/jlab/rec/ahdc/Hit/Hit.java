@@ -8,7 +8,6 @@ public class Hit implements Comparable<Hit> {
     private int _Layer;
     private int _Wire;
     private double _Doca;
-    private boolean _Used = false;
 
     public Hit(int _Superlayer, int _Layer, int _Wire, double _Doca) {
         this._Superlayer = _Superlayer;
@@ -17,12 +16,8 @@ public class Hit implements Comparable<Hit> {
         this._Doca = _Doca;
     }
 
-    public boolean get_Used() {
-        return _Used;
-    }
-
-    public void set_Used(boolean _Used) {
-        this._Used = _Used;
+    public String toString(){
+        return "Hit : Superlayer : " + this._Superlayer + " Layer : " + this._Layer + " Wire : " + this._Wire;
     }
 
     @Override
