@@ -38,13 +38,13 @@
       <dependency>
           <groupId>org.jlab.clas</groupId>
           <artifactId>clas-jcsg</artifactId>
-          <version>6.5.8-SNAPSHOT</version>
+          <version>6.5.12-SNAPSHOT</version>
           <scope>compile</scope>
       </dependency>
       <dependency>
           <groupId>org.jlab.clas</groupId>
           <artifactId>swim-tools</artifactId>
-          <version>6.5.8-SNAPSHOT</version>
+          <version>6.5.12-SNAPSHOT</version>
           <scope>compile</scope>
       </dependency>
 
