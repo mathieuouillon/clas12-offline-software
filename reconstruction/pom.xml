@@ -27,10 +27,7 @@
     <module>eb</module>
     <module>band</module>
     <module>rtpc</module>
-<<<<<<< HEAD
     <module>alert</module>
-=======
     <module>swaps</module>
->>>>>>> origin/TracTools-Cleanup
   </modules>
 </project>
