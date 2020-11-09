@@ -20,7 +20,7 @@ services:
     name: FTOFHB
   - class: org.jlab.service.ec.ECEngine
     name: EC
-  - class: org.jlab.rec.cvt.services.CVTReconstruction
+  - class: org.jlab.rec.cvt.services.CVTRecNewKF
     name: CVT
   - class: org.jlab.service.ctof.CTOFEngine
     name: CTOF
@@ -71,9 +71,6 @@ configuration:
 #    EBTB:
 #      variation: default
 #      timestamp: 08/22/2018
-    RTPC:
-      rtpcSimulation: "false"
-      rtpcCosmic: "true"
-      rtpcBeamlineFit: "false"
+
 mime-types:
   - binary/data-hipo
