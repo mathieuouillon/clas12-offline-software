@@ -2,7 +2,9 @@ package org.jlab.rec.cvt.track;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.jlab.clas.swimtools.Swim;
 import org.jlab.detector.geant4.v2.CTOFGeant4Factory;
 import org.jlab.geom.base.Detector;
@@ -15,9 +17,8 @@ import org.jlab.rec.cvt.cross.Cross;
 import org.jlab.rec.cvt.cross.CrossList;
 import org.jlab.rec.cvt.fit.HelicalTrackFitter;
 import org.jlab.rec.cvt.fit.LineFitter;
-import org.jlab.rec.cvt.fit.StraightTrackFitter;
+import org.jlab.rec.cvt.fit.CosmicFitter;
 import org.jlab.rec.cvt.hit.FittedHit;
-import org.jlab.rec.cvt.trajectory.Helix;
 import org.jlab.rec.cvt.trajectory.Ray;
 import org.jlab.rec.cvt.trajectory.StateVec;
 import org.jlab.rec.cvt.trajectory.Trajectory;
@@ -290,7 +291,7 @@ public class TrackCandListFinder {
 
                 // if the fit is successful
                 if (fitTrk.get_helix() != null && fitTrk.getFit() != null) {
-                    Track cand = new Track(fitTrk.get_helix(), swimmer);
+                    Track cand = new Track(fitTrk.get_helix());
                     cand.addAll(crossList.get(i));
                     //cand.set_HelicalTrack(fitTrk.get_helix());			done in Track constructor			
                     //cand.update_Crosses(svt_geo);
@@ -335,14 +336,16 @@ public class TrackCandListFinder {
     public ArrayList<StraightTrack> getStraightTracks(CrossList SVTCrosses, List<Cross> BMTCrosses, org.jlab.rec.cvt.svt.Geometry svt_geo, org.jlab.rec.cvt.bmt.Geometry bmt_geo) {
 
         ArrayList<StraightTrack> cands = new ArrayList<StraightTrack>();
-
+        Map<int[], StraightTrack> candMap= new HashMap<int[], StraightTrack>();
+        
         if (SVTCrosses.size() == 0) {
             System.err.print("Error in estimating track candidate trajectory: less than 3 crosses found");
             return cands;
         }
 
-        StraightTrackFitter fitTrk = new StraightTrackFitter();
-
+        CosmicFitter fitTrk = new CosmicFitter();
+        int[] crossNbs;
+        
         for (int i = 0; i < SVTCrosses.size(); i++) {
             ArrayList<Cross> crossesToFit = new ArrayList<Cross>();
             // remove SVT regions
@@ -356,7 +359,7 @@ public class TrackCandListFinder {
                 continue;
             }
 
-            fitTrk = new StraightTrackFitter();
+            //fitTrk = new CosmicFitter();
             RayMeasurements MeasArrays = this.get_RayMeasurementsArrays(crossesToFit, false, false);
 
             LineFitter linefitYX = new LineFitter();
@@ -449,44 +452,14 @@ public class TrackCandListFinder {
                     double chi2 = cand.calc_straightTrkChi2();
                     cand.set_chi2(chi2);
                     cand.set_Id(cands.size() + 1);
-                    cands.add(cand); // dump the cand		
+                    crossNbs = new int[cand.size()];
+                    for(int ic = 0; ic < cand.size(); ic++)
+                        crossNbs[ic] = cand.get(ic).get_Id();
+                    candMap.put(crossNbs, cand);
+                    
                 }
             }
-            /*
-			// reset the arrays
-			NewMeasArrays = this.get_RayMeasurementsArrays(crossesToFitWithBMT, false, false);
-			fitTrk.fit(MeasArrays._X, MeasArrays._Y, MeasArrays._Z, MeasArrays._Y_prime, MeasArrays._ErrRt, MeasArrays._ErrY_prime, MeasArrays._ErrZ);
-			//System.out.println(" *** NEW Refit cand with mm "+cand.get_ray().get_dirVec().toString()+
-			//		" slope xy "+fitTrk.get_ray().get_yxslope()+" slope yz "+fitTrk.get_ray().get_yzslope()+
-			//		" intec xy "+fitTrk.get_ray().get_yxinterc()+" inter yz "+fitTrk.get_ray().get_yzinterc());
-			// if fit OK
-			if(fitTrk.get_ray()!=null) {	
-				cand = new StraightTrack(fitTrk.get_ray());
-				
-				cand.addAll(crossesToFit);
-				
-				cand.update_Crosses(fitTrk.get_ray().get_yxslope(),fitTrk.get_ray().get_yzslope(),svt_geo);
-			
-				//System.out.println(" *** Refit cand with mm after reset SVT crosses "+cand.get_ray().get_dirVec().toString()+
-				//		" slope xy "+cand.get_ray().get_yxslope()+" slope yz "+cand.get_ray().get_yzslope()+
-				//		" intec xy "+cand.get_ray().get_yxinterc()+" inter yz "+cand.get_ray().get_yzinterc());
-				//KalFitCosmics kf = new KalFitCosmics(cand, svt_geo);
-				//kf.runKalFit(cand, svt_geo); // for now the KF runs on just SVT
-				//cand.update_Crosses(fitTrk.get_ray().get_yxslope(),fitTrk.get_ray().get_yzslope(),svt_geo);
-				
-				// add BMT
-				//cand.addAll(BMTCrosses);
-				//for(Cross c : cand)
-				//	c.set_Dir(cand.get_ray().get_dirVec());
-				//cand.set_chi2(fitTrk.get_rayfitoutput().get_chisq()[0]+fitTrk.get_rayfitoutput().get_chisq()[1]);
-				cand.set_ndf(NewMeasArrays._Y.size() + NewMeasArrays._Y_prime.size() -4);
-				double chi2 = cand.calc_straightTrkChi2();
-				cand.set_chi2(chi2);
-				//if(cand.get_ndf()>0) {							
-					cands.add(cand); // dump the cand							
-				//}
-			
-			} */
+            candMap.forEach((key,value) -> cands.add(value));
         }
 
         ArrayList<StraightTrack> passedcands = this.rmStraightTrkClones(org.jlab.rec.cvt.svt.Constants.removeClones, cands);
@@ -714,7 +687,7 @@ public class TrackCandListFinder {
                 }
             }
         }
-        //System.out.println("................there are "+SVTcrossesInTrk.size()+" SVT crosses.....");
+        
         ((ArrayList<Double>) X).ensureCapacity(SVTcrossesInTrk.size() + BMTZdetcrossesInTrk.size());
         ((ArrayList<Double>) Y).ensureCapacity(SVTcrossesInTrk.size() + BMTZdetcrossesInTrk.size());
         ((ArrayList<Double>) Z).ensureCapacity(SVTcrossesInTrk.size() + BMTCdetcrossesInTrk.size());
@@ -768,7 +741,7 @@ public class TrackCandListFinder {
 
         }
         if (resetSVTMeas) {
-            System.out.println("resetting " + SVTcrossesInTrk.size() + " crosses.....");
+            
             //System.err.println("Error in Helical Track fitting -- helix not found -- trying to refit using the uncorrected crosses...");
             for (int j = 0; j < SVTcrossesInTrk.size(); j++) {
                 X.add(j, SVTcrossesInTrk.get(j).get_Point0().x());
@@ -888,7 +861,7 @@ public class TrackCandListFinder {
                 double d = Math.abs(z - m_z);
                 if (d < doca) {
                     doca = d;
-                    closestCross = MMCrosses.get(i);
+                    closestCross = (Cross) MMCrosses.get(i).clone();
 
                     closestCross.set_Point(new Point3D(x, y[j], m_z));
                     closestCross.set_PointErr(new Point3D(10, 10, MMCrosses.get(i).get_PointErr().z())); // to do : put in the correct error
@@ -897,6 +870,7 @@ public class TrackCandListFinder {
 
             if (closestCross != null) {
                 if (doca < matchCutOff * 100) {
+                    //System.out.println(doca+" -->match C "+closestCross.toString());
                     matchedMMCrosses.add(closestCross);
                 }
             }
@@ -958,14 +932,14 @@ public class TrackCandListFinder {
 
                 if (Math.acos(cosAngMeasToTrk) < Math.acos(minCosAngMeasToTrk)) {
                     minCosAngMeasToTrk = cosAngMeasToTrk;
-                    closestCross = MMCrosses.get(i);
+                    closestCross = (Cross) MMCrosses.get(i).clone();
                     closestCross.set_Point(new Point3D(m_x, m_y, z));
                     closestCross.set_PointErr(new Point3D(MMCrosses.get(i).get_PointErr().x(), MMCrosses.get(i).get_PointErr().y(), 10.)); // to do : put in the correct error
                 }
             }
             if (closestCross != null) {
                 //if(minCosAngMeasToTrk<matchCutOff) 
-                //	System.out.println("matched "+closestCross.printInfo());
+                //	System.out.println("matched Z-det"+closestCross.printInfo());
                 matchedMMCrosses.add(closestCross);
 
             }
@@ -1059,7 +1033,7 @@ public class TrackCandListFinder {
     }
 
     private void EliminateStraightTrackOutliers(ArrayList<Cross> crossesToFit,
-            StraightTrackFitter fitTrk, org.jlab.rec.cvt.svt.Geometry svt_geo) {
+            CosmicFitter fitTrk, org.jlab.rec.cvt.svt.Geometry svt_geo) {
         for (int j = 0; j < crossesToFit.size(); j++) {
             if (Math.abs(fitTrk.get_ray().get_yxslope() * crossesToFit.get(j).get_Point().y() + fitTrk.get_ray().get_yxinterc() - crossesToFit.get(j).get_Point().x()) > org.jlab.rec.cvt.svt.Constants.COSMICSMINRESIDUAL
                     || Math.abs(fitTrk.get_ray().get_yzslope() * crossesToFit.get(j).get_Point().y() + fitTrk.get_ray().get_yzinterc() - crossesToFit.get(j).get_Point().z()) > org.jlab.rec.cvt.svt.Constants.COSMICSMINRESIDUALZ) {

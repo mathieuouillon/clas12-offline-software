@@ -73,6 +73,7 @@ mkdir -p coatjava/lib/services
 ### clean up any cache copies ###
 rm -rf ~/.m2/repository/org/hep/hipo
 rm -rf ~/.m2/repository/org/jlab
+cd common-tools/coat-lib; $mvn clean; cd -
 
 unset CLAS12DIR
 if [ $runUnitTests == "yes" ]; then
@@ -110,5 +111,6 @@ cp reconstruction/fvt/target/clas12detector-fmt-*-SNAPSHOT.jar coatjava/lib/serv
 cp reconstruction/eb/target/clas12detector-eb-*-SNAPSHOT.jar coatjava/lib/services/
 cp reconstruction/band/target/clas12detector-band-*-SNAPSHOT.jar coatjava/lib/services/
 cp reconstruction/rtpc/target/clas12detector-rtpc-*-SNAPSHOT.jar coatjava/lib/services/
+cp reconstruction/swaps/target/clas12detector-swaps-*-SNAPSHOT.jar coatjava/lib/services/
 
 echo "COATJAVA SUCCESSFULLY BUILT !"

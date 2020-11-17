@@ -5,13 +5,13 @@ import org.jlab.rec.cvt.trajectory.Ray;
 /**
  * The fit parameters of a line fit returned by HelicalTrackFitter
  */
-public class StraightTrackFitPars {
+public class CosmicFitPars {
 
     private Ray _ray;    // ray describing the straight track
     private double[] _chisq;  // fit chi-squared
 
     // The constructor
-    public StraightTrackFitPars(Ray ray, double[] chi2) {
+    public CosmicFitPars(Ray ray, double[] chi2) {
         set_ray(ray);
         set_chisq(chi2);
     }

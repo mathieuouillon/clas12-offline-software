@@ -27,7 +27,8 @@ public class TrackSeederCA {
     // Retrieve lists of crosses as track candidates
     // from the output of the cellular automaton   
     // it looks only for the maximum state, TODO: remove found candidate and continue
-    public List<ArrayList<Cross>> getCAcandidates( List<Cell> nodes, Swim swimmer ) {
+    public List<ArrayList<Cross>> getCAcandidates( List<Cell> nodes, org.jlab.rec.cvt.svt.Geometry svt_geo, 
+            Swim swimmer ) {
 //System.out.println("\n\n\t ____inside get candidates___");
         List<ArrayList<Cross>> trCands = new ArrayList<ArrayList<Cross>>();
         List<ArrayList<Cell>> cellCands = new ArrayList<ArrayList<Cell>>();
@@ -115,7 +116,7 @@ public class TrackSeederCA {
 //      		  System.out.println(" ");
       		  if( cand.get(0).get_plane().equalsIgnoreCase("XY")) {
 	  			  if( candlen > 2 ){
-	  				  if( fitSeed(getCrossFromCells(cand), 2, false, swimmer) != null) {
+	  				  if( fitSeed(getCrossFromCells(cand), svt_geo, 2, false, swimmer) != null) {
 	  					  cellCands.add(cand);
 	  					  
 	  					  for( Cell n : cand ) {
@@ -217,7 +218,7 @@ public class TrackSeederCA {
         // run the cellular automaton over SVT and BMT_Z crosses
 
         List<Cell> xynodes = runCAMaker( "XY", 5, crosses, bmt_geo, swimmer); 
-        List<ArrayList<Cross>> xytracks =  getCAcandidates( xynodes, swimmer);
+        List<ArrayList<Cross>> xytracks =  getCAcandidates( xynodes, svt_geo, swimmer);
 
 //        System.out.println( " XY tracks " + xytracks );
         //// TODO: TEST TEST TEST
@@ -244,7 +245,7 @@ public class TrackSeederCA {
 //	    cands = rmDuplicate( cands ); // TODO
 	    
 	    for( Track cand : cands ) {
-	    	cand.finalUpdate_Crosses(svt_geo); // this should update the Z position, only for display purposes 
+	    	//cand.finalUpdate_Crosses(svt_geo); // this should update the Z position, only for display purposes 
 	        Seed seed = new Seed();
 	        seed.set_Crosses(cand);
 	        seed.set_Helix(cand.get_helix());
@@ -260,7 +261,11 @@ public class TrackSeederCA {
         	}
         	seed.set_Clusters(clusters);
 	    }
-
+        for (Seed bseed : seedlist) {
+            for(Cross c : bseed.get_Crosses()) {
+                c.isInSeed = true;
+            }
+        }    
         return seedlist;
     }
     
@@ -380,7 +385,7 @@ public class TrackSeederCA {
         // run the CAmaker
         List<Cell> zrnodes = runCAMaker( "ZR", 5, crsZR, bmt_geo, swimmer);
 //System.out.println(zrnodes);
-        List<ArrayList<Cross>> zrtracks =  getCAcandidates( zrnodes, swimmer);
+        List<ArrayList<Cross>> zrtracks =  getCAcandidates( zrnodes, svt_geo, swimmer);
 
 //        System.out.println("sector" + sector + " len " + zrtracks.size());  
         
@@ -474,10 +479,6 @@ public class TrackSeederCA {
     List<Cross> BMTCrossesZ = new ArrayList<Cross>();
     List<Cross> SVTCrosses = new ArrayList<Cross>();
     float b[] = new float[3];
-
-    public Track fitSeed(List<Cross> VTCrosses, int fitIter, boolean originConstraint, Swim swimmer) {
-    	return fitSeed( VTCrosses,null,fitIter,originConstraint, swimmer);
-    }
     
     public Track fitSeed(List<Cross> VTCrosses, 
             org.jlab.rec.cvt.svt.Geometry svt_geo, int fitIter, boolean originConstraint,
@@ -545,7 +546,7 @@ public class TrackSeederCA {
             ((ArrayList<Double>) ErrRho).ensureCapacity(svtSz * useSVTdipAngEst + bmtCSz); // Try: don't use svt in dipdangle fit determination
             ((ArrayList<Double>) ErrRt).ensureCapacity(svtSz + bmtZSz);
             
-            cand = new Track(null, swimmer);
+            cand = new Track(null);
             cand.addAll(SVTCrosses);
             for (int j = 0; j < SVTCrosses.size(); j++) {
                 X.add(j, SVTCrosses.get(j).get_Point().x());
@@ -591,13 +592,16 @@ public class TrackSeederCA {
                 return null;
             }
 
-            cand = new Track(fitTrk.get_helix(), swimmer);
+            cand = new Track(fitTrk.get_helix());
             //cand.addAll(SVTCrosses);
             cand.addAll(SVTCrosses);
             cand.addAll(BMTCrossesC);
             cand.addAll(BMTCrossesZ);
             
-            cand.set_HelicalTrack(fitTrk.get_helix(), swimmer, b);
+            swimmer.BfieldLab(0, 0, 0, b);
+            double Bz = Math.abs(b[2]);
+            fitTrk.get_helix().B = Bz;
+            cand.set_HelicalTrack(fitTrk.get_helix());
             if( X.size()>3 ) {
             	cand.set_circleFitChi2PerNDF(fitTrk.get_chisq()[0]/(X.size()-3));
             }
@@ -611,14 +615,14 @@ public class TrackSeederCA {
             else {
             	cand.set_lineFitChi2PerNDF(fitTrk.get_chisq()[1]*2);// penalize tracks with only 2 crosses
             }
-            	
+            
             //if(shift==0)
-//            if (fitTrk.get_chisq()[0] < chisqMax) {
-//                chisqMax = fitTrk.get_chisq()[0];
-//                if(chisqMax<Constants.CIRCLEFIT_MAXCHI2)
-//                    cand.update_Crosses(svt_geo);
+            if (fitTrk.get_chisq()[0] < chisqMax) {
+                chisqMax = fitTrk.get_chisq()[0];
+                if(chisqMax<Constants.CIRCLEFIT_MAXCHI2)
+                    cand.update_Crosses(svt_geo);
 //                //i=fitIter;
-//            }
+            }
         }
         //System.out.println(" Seed fitter "+fitTrk.get_chisq()[0]+" "+fitTrk.get_chisq()[1]); 
 //        if(chisqMax>Constants.CIRCLEFIT_MAXCHI2)
