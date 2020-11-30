@@ -1,28 +1,48 @@
 package org.jlab.rec.ahdc.Cluster;
 
-import org.jlab.rec.ahdc.Hit.Hit;
 import org.jlab.rec.ahdc.PreCluster.PreCluster;
-
 import java.util.ArrayList;
 
-public class Cluster extends ArrayList<Hit> {
-    private double _R;
+/**
+ * Cluster are compose by 2 PreCluster on layer with a different stereo angle
+ */
+public class Cluster extends ArrayList<PreCluster> {
+
+    private double _Radius;
     private double _Phi;
     private double _Z;
+    private boolean _Used = false;
+    private int _Num_wire;
+    private double _X;
+    private double _Y;
+    private double _U;
+    private double _V;
 
 
-    public Cluster(PreCluster precluster, PreCluster otherprecluster) {
-        this._R = ( precluster.get_Radius() + otherprecluster.get_Radius()) /2;
-        this._Phi = (precluster.get_Phi_0() + otherprecluster.get_Phi_0())/2;
-        this._Z = ((otherprecluster.get_Phi_0() - precluster.get_Phi_0())/(Math.toRadians(20)*Math.pow(-1,precluster.get_Superlayer()) - Math.toRadians(20)*Math.pow(-1,otherprecluster.get_Superlayer())))*300-150;
+    public Cluster(PreCluster precluster, PreCluster other_precluster) {
+        this._Radius = ( precluster.get_Radius() + other_precluster.get_Radius()) /2;
+        this._Z = ((other_precluster.get_Phi() - precluster.get_Phi())/(Math.toRadians(20)*Math.pow(-1,precluster.get_Super_layer())
+                - Math.toRadians(20)*Math.pow(-1,other_precluster.get_Super_layer())))*300-150;
+        double x1 = -precluster.get_Radius() * Math.sin(precluster.get_Phi());
+        double y1 = -precluster.get_Radius() * Math.cos(precluster.get_Phi());
+        double x2 = -other_precluster.get_Radius() * Math.sin(other_precluster.get_Phi());
+        double y2 = -other_precluster.get_Radius() * Math.cos(other_precluster.get_Phi());
+        double x_mean = (x1 + x2)/2;
+        double y_mean = (y1 + y2)/2;
+        this._Phi = (- Math.PI/2 - Math.atan2(y_mean, x_mean)) % (2* Math.PI);
+        this._Num_wire = (int)(precluster.get_Num_wire() + other_precluster.get_Num_wire())/2;
+        this._X = -this._Radius * Math.sin(this._Phi);
+        this._Y = -this._Radius * Math.cos(this._Phi);
+        this._U = this._X/(this._X*this._X + this._Y*this._Y);
+        this._V = this._Y/(this._X*this._X + this._Y*this._Y);
     }
 
-    public double get_R() {
-        return _R;
+    public double get_Radius() {
+        return _Radius;
     }
 
-    public void set_R(double _R) {
-        this._R = _R;
+    public void set_Radius(double _Radius) {
+        this._Radius = _Radius;
     }
 
     public double get_Phi() {
@@ -39,5 +59,53 @@ public class Cluster extends ArrayList<Hit> {
 
     public void set_Z(double _Z) {
         this._Z = _Z;
+    }
+
+    public boolean is_Used() {
+        return _Used;
+    }
+
+    public void set_Used(boolean _Used) {
+        this._Used = _Used;
+    }
+
+    public int get_Num_wire() {
+        return _Num_wire;
+    }
+
+    public void set_Num_wire(int _Num_wire) {
+        this._Num_wire = _Num_wire;
+    }
+
+    public double get_X() {
+        return _X;
+    }
+
+    public void set_X(double _X) {
+        this._X = _X;
+    }
+
+    public double get_Y() {
+        return _Y;
+    }
+
+    public void set_Y(double _Y) {
+        this._Y = _Y;
+    }
+
+    public double get_U() {
+        return _U;
+    }
+
+    public void set_U(double _U) {
+        this._U = _U;
+    }
+
+    public double get_V() {
+        return _V;
+    }
+
+    public void set_V(double _V) {
+        this._V = _V;
     }
 }

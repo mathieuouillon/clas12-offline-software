@@ -21,7 +21,7 @@ public class RecoBankWriter {
 
             bank.setShort("ID", i, (short) hitlist.get(i).get_Id());
             bank.setByte("layer", i, (byte) hitlist.get(i).get_Layer());
-            bank.setByte("superlayer", i, (byte) hitlist.get(i).get_Superlayer());
+            bank.setByte("superlayer", i, (byte) hitlist.get(i).get_Super_layer());
             bank.setInt("wire", i, hitlist.get(i).get_Wire());
             bank.setDouble("Doca", i, hitlist.get(i).get_Doca());
         }

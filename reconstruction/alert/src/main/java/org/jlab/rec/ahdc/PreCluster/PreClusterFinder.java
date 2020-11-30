@@ -7,46 +7,89 @@ import java.util.List;
 
 public class PreClusterFinder {
 
-    private ArrayList<PreCluster> _AHDCPreCluster;
-    public ArrayList<PreCluster> get_AHDCPreCluster() {
-        return _AHDCPreCluster;
-    }
+    private List<PreCluster> _AHDCPreClusters;
+    public PreClusterFinder(){}
 
-    public void set_AHDCPreCluster(ArrayList<PreCluster> _AHDCPreCluster) {
-        this._AHDCPreCluster = _AHDCPreCluster;
-    }
-
-    public PreClusterFinder(){
-
-    }
-
-    public void findPreCluster(List<Hit> ahdc_hits) {
-        ArrayList<Hit> run = new ArrayList<Hit>();
-        List<ArrayList<Hit>> result = new ArrayList<ArrayList<Hit>>();
-        Hit expect = ahdc_hits.get(0);
-
-        for(Hit hit : ahdc_hits){
-            if (hit == expect) {
-                run.add(hit);
+    private void fill_list(List<Hit> AHDC_hits, ArrayList<Hit> sxlx, int super_layer, int layer){
+        for(Hit hit : AHDC_hits){
+            if(hit.get_Super_layer() == super_layer && hit.get_Layer() == layer){
+                sxlx.add(hit);
             }
-            else {
-                run = new ArrayList<Hit>();
-                run.add(hit);
-                result.add(run);
-            }
-            expect = hit;
-
         }
+    }
 
-        for(ArrayList<Hit> list : result ){
-            double pre_phi = 0;
-            int count = 0;
-            for(Hit hit : list){
-                pre_phi += hit.get_Phi_0() ;
-                count ++;
+    public void findPreCluster(List<Hit> AHDC_hits) {
+        ArrayList<Hit> s0l0 = new ArrayList<Hit>();
+        fill_list(AHDC_hits, s0l0, 0, 0);
+        ArrayList<Hit> s1l0 = new ArrayList<Hit>();
+        fill_list(AHDC_hits, s1l0, 1, 0);
+        ArrayList<Hit> s1l1 = new ArrayList<Hit>();
+        fill_list(AHDC_hits, s1l1, 1, 1);
+        ArrayList<Hit> s2l0 = new ArrayList<Hit>();
+        fill_list(AHDC_hits, s2l0, 2, 0);
+        ArrayList<Hit> s2l1 = new ArrayList<Hit>();
+        fill_list(AHDC_hits, s2l1, 2, 1);
+        ArrayList<Hit> s3l0 = new ArrayList<Hit>();
+        fill_list(AHDC_hits, s3l0, 3, 0);
+        ArrayList<Hit> s3l1 = new ArrayList<Hit>();
+        fill_list(AHDC_hits, s3l1, 3, 1);
+        ArrayList<Hit> s4l0 = new ArrayList<Hit>();
+        fill_list(AHDC_hits, s4l0, 4, 0);
+
+        ArrayList<ArrayList<Hit>> all_super_layer = new ArrayList<>();
+        all_super_layer.add(s0l0);
+        all_super_layer.add(s1l0);
+        all_super_layer.add(s1l1);
+        all_super_layer.add(s2l0);
+        all_super_layer.add(s2l1);
+        all_super_layer.add(s3l0);
+        all_super_layer.add(s3l1);
+        all_super_layer.add(s4l0);
+
+        for(ArrayList<Hit> sxlx : all_super_layer){
+            for(Hit hit : sxlx){
+                if(!hit.is_Used()){
+                    ArrayList<Hit> temp_list = new ArrayList<>();
+                    temp_list.add(hit);
+                    hit.set_Used(true);
+                    int expected_wire_plus = hit.get_Wire() + 1;
+                    int expected_wire_minus = hit.get_Wire() - 1;
+                    if(hit.get_Wire() - 1 == 0){
+                        expected_wire_minus = hit.get_Num_wire();
+                    }
+                    if(hit.get_Wire() + 1 == hit.get_Num_wire() + 1){
+                        expected_wire_plus = 1;
+                    }
+
+                    boolean already_use = false;
+                    for(Hit hit1 : sxlx){
+                        if(hit1.get_Wire() == hit.get_Wire() && !hit1.is_Used()){
+                            temp_list.add(hit1);
+                            hit1.set_Used(false);
+                        }
+                        if(hit1.get_Doca() < 0.6 || hit.get_Doca() < 0.6){continue;}
+
+                        if((hit1.get_Wire() == expected_wire_minus || hit1.get_Wire() == expected_wire_plus) &&
+                            ((hit.get_Doca() > 1.7 && hit1.get_Doca() > 1.7) || hit1.get_Doca() > 2.6 || hit.get_Doca() > 2.6 )
+                                && !hit1.is_Used() && !already_use){
+                            temp_list.add(hit1);
+                            already_use = true;
+                            hit1.set_Used(true);
+                        }
+                    }
+                    if(!temp_list.isEmpty()){
+                        _AHDCPreClusters.add(new PreCluster(temp_list));
+                    }
+                }
             }
-            pre_phi /= count;
-            _AHDCPreCluster.add(new PreCluster( list.get(0).get_Superlayer(), list.get(0).get_Layer(), 0, list.get(0).get_Radius(), pre_phi ));
         }
+    }
+
+
+    public List<PreCluster> get_AHDCPreClusters() {
+        return _AHDCPreClusters;
+    }
+    public void set_AHDCPreClusters(List<PreCluster> _AHDCPreClusters) {
+        this._AHDCPreClusters = _AHDCPreClusters;
     }
 }

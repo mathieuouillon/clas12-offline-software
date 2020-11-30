@@ -1,32 +1,68 @@
 package org.jlab.rec.ahdc.PreCluster;
 
-public class PreCluster {
+import org.jlab.rec.ahdc.Hit.Hit;
+import java.util.ArrayList;
+
+public class PreCluster extends ArrayList<Hit> implements Comparable<PreCluster> {
 
     private int _Id;
-    private int _Superlayer;
+    private int _Super_layer;
     private int _Layer;
     private double _Doca;
     private double _Radius;
-    private double _Phi_0;
+    private double _Phi;
+    private double _Num_wire;
+    private double _X = -this._Radius * Math.sin(this._Phi);
+    private double _Y = -this._Radius * Math.cos(this._Phi);
+    private boolean _Used = false;
 
-    public PreCluster(int _Superlayer, int _Layer, double _Doca, double _Radius, double _Phi_0){
-        this._Superlayer = _Superlayer;
-        this._Layer = _Layer;
-        this._Doca = _Doca;
-        this._Radius = _Radius;
-        this._Phi_0 = _Phi_0;
+    public PreCluster(ArrayList<Hit> hit_list){
+        if(hit_list.size() == 1){
+            this._Super_layer = hit_list.get(0).get_Super_layer();
+            this._Layer = hit_list.get(0).get_Layer();
+            this._Radius = hit_list.get(0).get_Radius();
+            this._Num_wire = hit_list.get(0).get_Num_wire();
+            this._Phi = hit_list.get(0).get_Phi();
+        }
+        else{
+            this._Super_layer = hit_list.get(0).get_Super_layer();
+            this._Layer = hit_list.get(0).get_Layer();
+            this._Radius = hit_list.get(0).get_Radius();
+            this._Num_wire = hit_list.get(0).get_Num_wire();
+            double pre_phi = 0;
+            double pre_x = 0;
+            double pre_y = 0;
+            for(Hit hit : hit_list){
+                pre_x += hit.get_X();
+                pre_y += hit.get_Y();
+            }
+            pre_x /= hit_list.size();
+            pre_y /= hit_list.size();
+            this._Phi = (- Math.PI/2 - Math.atan2(pre_y, pre_x)) % (2* Math.PI);
+        }
+        this._X = -this._Radius * Math.sin(this._Phi);
+        this._Y = -this._Radius * Math.cos(this._Phi);
+    }
+
+    public int compareTo(PreCluster arg0) {
+        if ((this.get_Radius() > arg0.get_Radius()) || (this.get_Radius() == arg0.get_Radius() && this.get_Phi() > arg0.get_Phi()) ) {
+            return 1;
+        }
+        else {
+            return 0;
+        }
     }
 
     public String toString(){
-        return "PreCluster : Superlayer : " + this._Superlayer + " Layer : " + this._Layer + " Radius : " + this._Radius + " Phi_0 : " + this._Phi_0;
+        return "PreCluster : Super_layer : " + this._Super_layer + " Layer : " + this._Layer + " Radius : " + this._Radius + " Phi_0 : " + this._Phi;
     }
 
-    public int get_Superlayer() {
-        return _Superlayer;
+    public int get_Super_layer() {
+        return _Super_layer;
     }
 
-    public void set_Superlayer(int _Superlayer) {
-        this._Superlayer = _Superlayer;
+    public void set_Super_layer(int _Super_layer) {
+        this._Super_layer = _Super_layer;
     }
 
     public int get_Layer() {
@@ -53,11 +89,51 @@ public class PreCluster {
         this._Radius = _Radius;
     }
 
-    public double get_Phi_0() {
-        return _Phi_0;
+    public double get_Phi() {
+        return _Phi;
     }
 
-    public void set_Phi_0(double _Phi_0) {
-        this._Phi_0 = _Phi_0;
+    public void set_Phi(double _Phi) {
+        this._Phi = _Phi;
+    }
+
+    public int get_Id() {
+        return _Id;
+    }
+
+    public void set_Id(int _Id) {
+        this._Id = _Id;
+    }
+
+    public double get_Num_wire() {
+        return _Num_wire;
+    }
+
+    public void set_Num_wire(double _Num_wire) {
+        this._Num_wire = _Num_wire;
+    }
+
+    public double get_X() {
+        return _X;
+    }
+
+    public void set_X(double _X) {
+        this._X = _X;
+    }
+
+    public double get_Y() {
+        return _Y;
+    }
+
+    public void set_Y(double _Y) {
+        this._Y = _Y;
+    }
+
+    public boolean is_Used() {
+        return _Used;
+    }
+
+    public void set_Used(boolean _Used) {
+        this._Used = _Used;
     }
 }
