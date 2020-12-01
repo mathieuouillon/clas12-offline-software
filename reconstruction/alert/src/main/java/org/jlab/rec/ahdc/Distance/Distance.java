@@ -103,7 +103,7 @@ public class Distance {
 
                     CircleFitter circlefitter = new CircleFitter();
                     if(circlefitter.fitStatus(x_,y_,w_,x_.size())){
-                        double chisq = circlefitter.getFit().chisq();
+                        double chisq = Math.abs(circlefitter.getFit().chisq() - 1);
                         if(chisq < chisq_min){
                             chisq_min = chisq;
                             best_track = other_track;
@@ -189,7 +189,7 @@ public class Distance {
 
                     CircleFitter circlefitter = new CircleFitter();
                     if(circlefitter.fitStatus(x_,y_,w_,x_.size())){
-                        double chisq = circlefitter.getFit().chisq();
+                        double chisq = Math.abs(circlefitter.getFit().chisq() - 1);
                         if(chisq < chisq_min){
                             chisq_min = chisq;
                             best_track = other_track;
