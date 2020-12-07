@@ -8,7 +8,9 @@ import java.util.List;
 public class PreClusterFinder {
 
     private List<PreCluster> _AHDCPreClusters;
-    public PreClusterFinder(){}
+    public PreClusterFinder(){
+        _AHDCPreClusters = new ArrayList<>();
+    }
 
     private void fill_list(List<Hit> AHDC_hits, ArrayList<Hit> sxlx, int super_layer, int layer){
         for(Hit hit : AHDC_hits){

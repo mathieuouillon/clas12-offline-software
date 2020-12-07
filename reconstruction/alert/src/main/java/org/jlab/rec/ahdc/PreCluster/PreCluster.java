@@ -12,34 +12,27 @@ public class PreCluster extends ArrayList<Hit> implements Comparable<PreCluster>
     private double _Radius;
     private double _Phi;
     private double _Num_wire;
-    private double _X = -this._Radius * Math.sin(this._Phi);
-    private double _Y = -this._Radius * Math.cos(this._Phi);
+    private double _X;
+    private double _Y;
     private boolean _Used = false;
+    private ArrayList<Hit> _hits_list;
+
 
     public PreCluster(ArrayList<Hit> hit_list){
-        if(hit_list.size() == 1){
-            this._Super_layer = hit_list.get(0).get_Super_layer();
-            this._Layer = hit_list.get(0).get_Layer();
-            this._Radius = hit_list.get(0).get_Radius();
-            this._Num_wire = hit_list.get(0).get_Num_wire();
-            this._Phi = hit_list.get(0).get_Phi();
+        _hits_list = hit_list;
+        this._Super_layer = hit_list.get(0).get_Super_layer();
+        this._Layer = hit_list.get(0).get_Layer();
+        this._Radius = hit_list.get(0).get_Radius();
+        this._Num_wire = hit_list.get(0).get_Num_wire();
+        double pre_x = 0.0;
+        double pre_y = 0.0;
+        for(Hit hit : hit_list){
+            pre_x += hit.get_X();
+            pre_y += hit.get_Y();
         }
-        else{
-            this._Super_layer = hit_list.get(0).get_Super_layer();
-            this._Layer = hit_list.get(0).get_Layer();
-            this._Radius = hit_list.get(0).get_Radius();
-            this._Num_wire = hit_list.get(0).get_Num_wire();
-            double pre_phi = 0;
-            double pre_x = 0;
-            double pre_y = 0;
-            for(Hit hit : hit_list){
-                pre_x += hit.get_X();
-                pre_y += hit.get_Y();
-            }
-            pre_x /= hit_list.size();
-            pre_y /= hit_list.size();
-            this._Phi = (- Math.PI/2 - Math.atan2(pre_y, pre_x)) % (2* Math.PI);
-        }
+        pre_x /= hit_list.size();
+        pre_y /= hit_list.size();
+        this._Phi = mod(- Math.PI/2 - Math.atan2(pre_y, pre_x), 2*Math.PI );
         this._X = -this._Radius * Math.sin(this._Phi);
         this._Y = -this._Radius * Math.cos(this._Phi);
     }
@@ -53,8 +46,18 @@ public class PreCluster extends ArrayList<Hit> implements Comparable<PreCluster>
         }
     }
 
-    public String toString(){
-        return "PreCluster : Super_layer : " + this._Super_layer + " Layer : " + this._Layer + " Radius : " + this._Radius + " Phi_0 : " + this._Phi;
+    double mod(double a, double b) {
+        return a - b * Math.floor(a / b);
+    }
+
+    @Override
+    public String toString() {
+        return "PreCluster{" +
+                "_Super_layer=" + _Super_layer +
+                ", _Layer=" + _Layer +
+                ", _Radius=" + _Radius +
+                ", _Phi=" + _Phi +
+                '}';
     }
 
     public int get_Super_layer() {

@@ -12,6 +12,7 @@ import org.jlab.rec.ahdc.PreCluster.PreCluster;
 import org.jlab.rec.ahdc.PreCluster.PreClusterFinder;
 import org.jlab.rec.ahdc.Track.Track;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class AHDCReconstruction extends ReconstructionEngine {
@@ -28,37 +29,47 @@ public class AHDCReconstruction extends ReconstructionEngine {
     @Override
     public boolean processDataEvent(DataEvent event) {
 
-        String method = "distance";
+        String method = "hough";
 
-        // I) Read hit
-        HitReader hitRead = new HitReader();
-        hitRead.fetch_AHDCHits(event);
-        List<Hit> AHDC_Hits = hitRead.get_AHDCHits();
+        if(event.hasBank("AHDC::adc")) {
 
-        // II) Create PreCluster
-        PreClusterFinder preclusterfinder = new PreClusterFinder();
-        preclusterfinder.findPreCluster(AHDC_Hits);
-        List<PreCluster> AHDC_PreClusters = preclusterfinder.get_AHDCPreClusters();
+            // I) Read hit
+            HitReader hitRead = new HitReader();
+            hitRead.fetch_AHDCHits(event);
+            List<Hit> AHDC_Hits = hitRead.get_AHDCHits();
 
-        // III) Create Cluster
-        ClusterFinder clusterfinder = new ClusterFinder();
-        clusterfinder.findCluster(AHDC_PreClusters);
-        List<Cluster> AHDC_Clusters = clusterfinder.get_AHDCClusters();
+            // II) Create PreCluster
+            PreClusterFinder preclusterfinder = new PreClusterFinder();
+            preclusterfinder.findPreCluster(AHDC_Hits);
+            List<PreCluster> AHDC_PreClusters = preclusterfinder.get_AHDCPreClusters();
 
-        // IV) Track Finder
-        if(method.equals("distance")){
-            // IV) a) Distance method
-            Distance distance = new Distance();
-            distance.find_track(AHDC_Clusters);
-            List<Track> AHDC_Tracks = distance.get_AHDCTracks();
+            // III) Create Cluster
+            ClusterFinder clusterfinder = new ClusterFinder();
+            clusterfinder.findCluster(AHDC_PreClusters);
+            List<Cluster> AHDC_Clusters = clusterfinder.get_AHDCClusters();
+
+            System.out.println(AHDC_Clusters);
+
+            // IV) Track Finder
+            List<Track> AHDC_Tracks = new ArrayList<>();
+            if(method.equals("distance")){
+                // IV) a) Distance method
+                Distance distance = new Distance();
+                distance.find_track(AHDC_Clusters);
+                AHDC_Tracks = distance.get_AHDCTracks();
+            }
+
+            else if(method.equals("hough")){
+                // IV) b) Hough Transform method
+                HoughTransform houghtransform = new HoughTransform();
+                houghtransform.find_tracks(AHDC_Clusters);
+                AHDC_Tracks = houghtransform.get_AHDCTracks();
+            }
+
+            System.out.println(AHDC_Tracks);
         }
 
-        else if(method.equals("hough")){
-            // IV) b) Hough Transform method
-            HoughTransform houghtransform = new HoughTransform();
-            houghtransform.find_tracks(AHDC_Clusters);
-            List<Track> AHDC_Tracks = houghtransform.get_AHDCTracks();
-        }
+        System.out.println();
 
         return true;
     }

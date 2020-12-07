@@ -11,25 +11,24 @@ import java.util.List;
  */
 public class ClusterFinder {
 
-    public ClusterFinder() {}
+    private ArrayList<Cluster> _AHDCClusters;
 
-    public List<Cluster> get_AHDCClusters() {
-        return _AHDCClusters;
+    public ArrayList<Cluster> get_list_with_maybe_same_cluster() {
+        return _list_with_maybe_same_cluster;
     }
 
-    public void set_AHDCClusters(ArrayList<Cluster> _AHDCClusters) {
-        this._AHDCClusters = _AHDCClusters;
+    private ArrayList<Cluster> _list_with_maybe_same_cluster;
+
+    public ClusterFinder() {
+        _AHDCClusters = new ArrayList<Cluster>();
+        _list_with_maybe_same_cluster = new ArrayList<Cluster>();
     }
-
-    private ArrayList<Cluster> _AHDCClusters = new ArrayList<Cluster>();
-
-    private final ArrayList<Cluster> _list_with_maybe_same_cluster = new ArrayList<Cluster>();
 
     private void find_associate_cluster(PreCluster precluster, List<PreCluster> AHDC_precluster_list, int window,
                                         int minimal_distance, int super_layer, int layer, int associate_super_layer){
         if(precluster.get_Super_layer() == super_layer && precluster.get_Layer() == layer && !precluster.is_Used()){
             ArrayList<PreCluster> possible_precluster_list = new ArrayList<>();
-            double phi_mean = precluster.get_Phi() + 0.1;
+            double phi_mean = precluster.get_Phi() + 0.1*Math.pow(-1, precluster.get_Super_layer());
             double x = - precluster.get_Radius() * Math.sin(phi_mean);
             double y = - precluster.get_Radius() * Math.cos(phi_mean);
             for(PreCluster other_precluster : AHDC_precluster_list){
@@ -45,7 +44,8 @@ public class ClusterFinder {
                     }
                 }
             }
-            if(possible_precluster_list.size() > 1){
+
+            if(possible_precluster_list.size() > 0){
                 double distance_min = Double.MAX_VALUE;
                 PreCluster best_precluster = null;
                 for(PreCluster possible_precluster : possible_precluster_list){
@@ -55,12 +55,14 @@ public class ClusterFinder {
                             + (precluster.get_Y() - possible_precluster.get_Y())*(precluster.get_Y() - possible_precluster.get_Y()));
                     if(distance < distance_min && distance_real > minimal_distance){
                         distance_min = distance;
-                        best_precluster = precluster;
+                        best_precluster = possible_precluster;
                     }
                 }
-                precluster.set_Used(true);
                 if(best_precluster != null){
-                    _list_with_maybe_same_cluster.add(new Cluster(precluster, best_precluster));
+                    precluster.set_Used(true);
+                    best_precluster.set_Used(true);
+                    Cluster new_Cluster = new Cluster(precluster, best_precluster);
+                    _list_with_maybe_same_cluster.add(new_Cluster);
                 }
             }
         }
@@ -78,7 +80,7 @@ public class ClusterFinder {
             }
         }
 
-        Collections.sort(AHDC_precluster_list);
+        // Collections.sort(AHDC_precluster_list);
 
         for(PreCluster precluster : AHDC_precluster_list){
             find_associate_cluster(precluster, AHDC_precluster_list, window, minimal_distance, 0, 0, 1);
@@ -88,10 +90,22 @@ public class ClusterFinder {
         }
 
         for(Cluster cluster : _list_with_maybe_same_cluster){
-            if(_AHDCClusters.contains(cluster)){
+            if(!containsCluster(_AHDCClusters, cluster.get_Phi(), cluster.get_Radius())){
                 _AHDCClusters.add(cluster);
             }
         }
+    }
+
+    public boolean containsCluster(final List<Cluster> list, double phi, double radius){
+        return list.stream().anyMatch(o -> o.get_Radius() == (radius) && o.get_Phi() == phi);
+    }
+
+    public List<Cluster> get_AHDCClusters() {
+        return _AHDCClusters;
+    }
+
+    public void set_AHDCClusters(ArrayList<Cluster> _AHDCClusters) {
+        this._AHDCClusters = _AHDCClusters;
     }
 }
 

@@ -20,6 +20,13 @@ public class Track {
         }
     }
 
+    @Override
+    public String toString() {
+        return "Track{" +
+                "_Clusters=" + _Clusters +
+                '}';
+    }
+
     public double get_Distance() {
         return _Distance;
     }

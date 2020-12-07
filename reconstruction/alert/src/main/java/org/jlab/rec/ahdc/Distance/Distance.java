@@ -11,7 +11,9 @@ public class Distance {
 
     private List<Track> _AHDCTracks;
 
-    public Distance(){}
+    public Distance(){
+        _AHDCTracks = new ArrayList<>();
+    }
 
     public void find_track(List<Cluster> AHDC_Cluster){
         find_track_4_clusters(AHDC_Cluster);
@@ -119,7 +121,7 @@ public class Distance {
 
         List<Cluster> clusters_to_remove_without_double = new ArrayList<>();
         for(Cluster cluster : clusters_to_remove){
-            if(!clusters_to_remove_without_double.contains(cluster)){
+            if(!containsCluster(clusters_to_remove_without_double, cluster.get_Phi(), cluster.get_Radius())){
                 clusters_to_remove_without_double.add(cluster);
             }
         }
@@ -129,16 +131,21 @@ public class Distance {
         }
     }
 
-    private ArrayList<ArrayList<Cluster>> combination(List<Cluster> arr, ArrayList<Cluster> data, int start,
+    public boolean containsCluster(final List<Cluster> list, double phi, double radius){
+        return list.stream().anyMatch(o -> o.get_Radius() == (radius) && o.get_Phi() == phi);
+    }
+
+
+   private ArrayList<ArrayList<Cluster>> combination(List<Cluster> arr, ArrayList<Cluster> data, int start,
                                            int end, int index, int r) {
 
-        ArrayList<ArrayList<Cluster>> all= new ArrayList<>();
+        ArrayList<ArrayList<Cluster>> all = new ArrayList<>();
         if (index == r) {
             all.add(data);
         }
 
         for (int i=start; i<=end && end-i+1 >= r-index; i++) {
-            data.set(index,arr.get(i));
+            data.add(arr.get(i));
             combination(arr, data, i+1, end, index+1, r);
         }
 

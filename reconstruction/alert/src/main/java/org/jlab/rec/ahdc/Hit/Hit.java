@@ -12,8 +12,8 @@ public class Hit implements Comparable<Hit> {
     private double _Radius;
     private int _Num_wire;
     private boolean _Used = false;
-    private double _X = - this._Radius * Math.sin(this._Phi);
-    private double _Y = - this._Radius * Math.cos(this._Phi);
+    private double _X;
+    private double _Y;
 
     public Hit(int _Super_layer, int _Layer, int _Wire, double _Doca) {
         this._Super_layer = _Super_layer;
@@ -34,10 +34,20 @@ public class Hit implements Comparable<Hit> {
         this._Phi = this._Wire * ((2* Math.PI)/num_wire) - (2 * Math.PI) / num_wire;
         this._Radius = radius;
         this._Num_wire = num_wire;
+        this._X = - this._Radius * Math.sin(this._Phi);
+        this._Y = - this._Radius * Math.cos(this._Phi);
+
     }
 
-    public String toString(){
-        return "Hit : Superlayer : " + this._Super_layer + " Layer : " + this._Layer + " Wire : " + this._Wire;
+    @Override
+    public String toString() {
+        return "Hit{" +
+                "_Super_layer=" + _Super_layer +
+                ", _Layer=" + _Layer +
+                ", _Wire=" + _Wire +
+                ", _Doca=" + _Doca +
+                ", _Phi=" + _Phi +
+                '}';
     }
 
     @Override
