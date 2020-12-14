@@ -2,6 +2,7 @@ package org.jlab.rec.rtpc.banks;
 
 import org.jlab.io.base.DataBank;
 import org.jlab.io.base.DataEvent;
+import org.jlab.jnp.hipo4.data.Schema;
 import org.jlab.rec.rtpc.hit.HitParameters;
 import org.jlab.rec.rtpc.hit.RecoHitVector;
 import java.util.List;
@@ -13,7 +14,7 @@ public class RecoBankWriter {
 
     /**
      * 
-     * @param hitlist the list of  hits that are of the type Hit.
+     * @param params the list of hits that are of the type Hit.
      * @return hits bank
      *
      */
@@ -69,10 +70,8 @@ public class RecoBankWriter {
         if(listsize == 0) return null;
         int row = 0;
 
-        
         DataBank bank = event.createBank("RTPC::tracks", listsize);
-        
-        
+
         if (bank == null) {
             System.err.println("COULD NOT CREATE A BANK!!!!!!");
             return null;
@@ -105,15 +104,15 @@ public class RecoBankWriter {
             bank.setFloat("max_row", row, (float) largepad.row());
             bank.setFloat("max_col", row, (float) largepad.col());
             bank.setFloat("min_time", row, (float) hitvec.smallhit().time());
-            bank.setFloat("max_time", row, (float) hitvec.largehit().time());
-            bank.setFloat("min_radius", row, (float) listhits.get(listhits.size()-1).r());
-            bank.setFloat("max_radius", row, (float) listhits.get(0).r());
-            bank.setFloat("min_phi", row, (float) listhits.get(listhits.size()-1).phi());
-            bank.setFloat("max_phi", row, (float) listhits.get(0).phi());
+            bank.setFloat("max_time", row, (float) (Math.PI/2.-Math.atan(track.getKFHelix().getTanL())));
+            bank.setFloat("min_radius", row, (float) track.getKFHelix().getPhi0());
+            bank.setFloat("max_radius", row, (float) track.getKFHelix().getPx());
+            bank.setFloat("min_phi", row, (float) track.getKFHelix().getPy());
+            bank.setFloat("max_phi", row, (float) track.getKFHelix().getPz());
 
             row++;
         }
         //bank.show();
         return bank;
-    }	
+    }
 }

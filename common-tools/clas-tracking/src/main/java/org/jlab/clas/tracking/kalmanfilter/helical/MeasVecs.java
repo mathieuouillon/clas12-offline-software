@@ -164,7 +164,6 @@ public class MeasVecs {
             SVminus = sv.newStateVecAtMeasSite(stateVec.k, SVminus, mv, swimmer, false);
             Hval[i] = (this.h(stateVec.k, SVplus) - this.h(stateVec.k, SVminus)) / getDelta_d_a()[i] ;
         }
-       
         return getHval();
     }
 

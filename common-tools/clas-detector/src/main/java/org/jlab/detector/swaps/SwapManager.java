@@ -233,7 +233,7 @@ public class SwapManager {
        
         // set their bank/table names:
         SchemaFactory schema = new SchemaFactory();
-        schema.initFromDirectory(System.getenv("CLAS12DIR")+"/etc/bankdefs/hipo4");
+        schema.initFromDirectory(System.getenv("CLAS12DIR") + "/etc/bankdefs/hipo4");
         for (String detName : thisDets) {
             // some detectors broke the bank/table naming convention:
             String tableName = detName.equals("BST") ? "/daq/tt/svt" : "/daq/tt/"+detName.toLowerCase();

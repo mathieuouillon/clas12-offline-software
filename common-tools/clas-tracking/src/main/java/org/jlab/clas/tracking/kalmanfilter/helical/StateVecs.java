@@ -1,9 +1,6 @@
 package org.jlab.clas.tracking.kalmanfilter.helical;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.jlab.geom.prim.Vector3D;
 import org.jlab.geom.prim.Point3D;
@@ -414,7 +411,7 @@ public class StateVecs {
 
             //double t_ov_X0 = 2. * 0.32 / Constants.SILICONRADLEN; //path length in radiation length units = t/X0 [true path length/ X0] ; Si radiation length = 9.36 cm
             double t_ov_X0 = this.get_t_ov_X0(Math.sqrt(iVec.x*iVec.x+iVec.y*iVec.y)); //System.out.println(Math.log(t_ov_X0)/9.+" rad "+Math.sqrt(iVec.x*iVec.x+iVec.y*iVec.y)+" t/x0 "+t_ov_X0);
-            double mass = MassHypothesis(2);   // assume given mass hypothesis (2=pion)
+            double mass = MassHypothesis(4);   // assume given mass hypothesis (2=pion, 4=proton)
             double beta = p / Math.sqrt(p * p + mass * mass); // use particle momentum
             double pathLength = t_ov_X0 / cosEntranceAngle;
             double sctRMS = (0.00141 / (beta * p)) * Math.sqrt(pathLength) * (1 + Math.log10(pathLength)/9.); // Highland-Lynch-Dahl formula
@@ -449,7 +446,7 @@ public class StateVecs {
 
     private void resetArrays(double[] swimPars) {
         for(int i = 0; i<swimPars.length; i++) {
-            swimPars[i] = 0;
+            swimPars[i] = 0.;
         }
     }
 
@@ -722,8 +719,7 @@ public class StateVecs {
         return new Helix(X.x(), X.y(), X.z(), P.x(), P.y(), P.z(), q, B, X0.get(0), Y0.get(0), util.units);
     }
     public StateVec initSV = new StateVec(0);
-    public void init(Helix trk, Matrix cov, KFitter kf,
-            Swim swimmer) {
+    public void init(Helix trk, Matrix cov, KFitter kf, Swim swimmer) {
         this.units = trk.getUnitScale();
         this.lightVel = trk.getLIGHTVEL();
         this.util = trk;
@@ -750,7 +746,7 @@ public class StateVecs {
 
         initSV.dz    = trk.getZ();
         initSV.tanL  = trk.getTanL();
-        initSV.d_rho = trk.getD0()*(Math.cos(trk.getPhi0())*Math.sin(initSV.phi0) -Math.sin(trk.getPhi0())*Math.cos(initSV.phi0));
+        initSV.d_rho = trk.getD0()*(Math.cos(trk.getPhi0())*Math.sin(initSV.phi0) - Math.sin(trk.getPhi0())*Math.cos(initSV.phi0));
 
         double x0 = X0.get(0) + initSV.d_rho * Math.cos(initSV.phi0) ;
         double y0 = Y0.get(0) + initSV.d_rho * Math.sin(initSV.phi0) ;
@@ -764,19 +760,8 @@ public class StateVecs {
 
         this.trackTraj.put(0, initSV);
         CovMat initCM = new CovMat(0);
-        Matrix covKF = cov.copy(); 
-    /*    
-        System.out.println("----------------");
-        for(int ic = 0; ic<5; ic++) {
-            for(int ir = 0; ir<5; ir++) {
-                if(ic==ir) {
-                    System.out.println(Math.sqrt(covKF.get(ic, ir)));
-                }
-            }
-        }
-    */
+        Matrix covKF = cov.copy();
         covKF.set(2, 2, cov.get(2, 2)*600 );
-
         initCM.covMat = covKF;
         this.trackCov.put(0, initCM);
     }

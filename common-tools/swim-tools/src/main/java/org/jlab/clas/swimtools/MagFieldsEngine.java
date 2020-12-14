@@ -48,7 +48,8 @@ public class MagFieldsEngine extends ReconstructionEngine {
         if (solenoidMap==null) {
             throw new RuntimeException("["+this.getName()+"]  Failed to find solenoid map name in yaml or env.");
         }
-        String mapDir = CLASResources.getResourcePath("etc")+"/data/magfield";
+        // String mapDir = CLASResources.getResourcePath("etc")+"/data/magfield";
+        String mapDir = "../../etc/data/magfield/";
         try {
             MagneticFields.getInstance().initializeMagneticFields(mapDir,torusMap,solenoidMap);
         }

@@ -12,6 +12,7 @@ import org.jlab.clas.reco.EngineProcessor;
 import org.jlab.clas.reco.ReconstructionEngine;
 import org.jlab.io.base.DataBank;
 import org.jlab.io.base.DataEvent;
+import org.jlab.rec.rtpc.RTPCKalmanFilter.KalmanFilter;
 import org.jlab.rec.rtpc.banks.HitReader;
 import org.jlab.rec.rtpc.banks.RecoBankWriter;
 import org.jlab.rec.rtpc.hit.Hit;
@@ -22,8 +23,7 @@ import org.jlab.rec.rtpc.hit.TrackDisentangler;
 import org.jlab.rec.rtpc.hit.TrackFinder;
 import org.jlab.rec.rtpc.hit.TrackHitReco;
 import org.jlab.rec.rtpc.hit.HelixFitTest;
-
-
+import org.jlab.utils.system.ClasUtilsFile;
 
 
 public class RTPCEngine extends ReconstructionEngine{
@@ -96,7 +96,7 @@ public class RTPCEngine extends ReconstructionEngine{
         double magfield = 50.0;
         double magfieldfactor = 1;
 
-        if(event.hasBank("RUN::config")==true){
+        if(event.hasBank("RUN::config")){
             DataBank bank = event.getBank("RUN::config");
             runNo = bank.getInt("run", 0);
             magfieldfactor = bank.getFloat("solenoid",0);
@@ -125,19 +125,21 @@ public class RTPCEngine extends ReconstructionEngine{
             //Helix Fit Tracks to calculate Track Parameters
             HelixFitTest HF = new HelixFitTest(params,fitToBeamline,Math.abs(magfield),cosmic);
 
+            KalmanFilter kf = new KalmanFilter(params);
+            kf.process(params, event);
+
             RecoBankWriter writer = new RecoBankWriter();
             DataBank recoBank = writer.fillRTPCHitsBank(event,params);
             DataBank trackBank = writer.fillRTPCTrackBank(event,params);
 
             event.appendBank(recoBank);
             event.appendBank(trackBank);
-
-
         }
         else{
             return true;
         }
         return true;
+
     }
 
     public static void main(String[] args){

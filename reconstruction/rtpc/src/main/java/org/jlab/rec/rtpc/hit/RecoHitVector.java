@@ -8,11 +8,11 @@ public class RecoHitVector {
 	private double z;
 	private double dt;
 	private double time;
-        private double _adc;
-        private HitVector _smallhit;
-        private HitVector _largehit;
-        private double _r;
-        private double _phi;
+	private double _adc;
+	private HitVector _smallhit;
+	private HitVector _largehit;
+	private double _r;
+	private double _phi;
        
 	
 	public RecoHitVector()
@@ -34,11 +34,11 @@ public class RecoHitVector {
 		z = zrec;
 		dt = tdiff;
 		time = t;
-                _adc = adc;
-                _smallhit = smallhit;
-                _largehit = largehit;
-                _r = rrec;
-                _phi = phirec;
+		_adc = adc;
+		_smallhit = smallhit;
+		_largehit = largehit;
+		_r = rrec;
+		_phi = phirec;
                 
 	}
 	
@@ -102,21 +102,21 @@ public class RecoHitVector {
             return dt;
 	}
 	
-        public double adc(){
-            return _adc;
-        }
-        
-        public double r(){
-            return _r;
-        }
-        
-        public double phi(){
-            return _phi;
-        }
-        
-        public HitVector smallhit(){
-            return _smallhit;
-        }
+	public double adc(){
+		return _adc;
+	}
+
+	public double r(){
+		return _r;
+	}
+
+	public double phi(){
+		return _phi;
+	}
+
+	public HitVector smallhit(){
+		return _smallhit;
+	}
         
 	public HitVector largehit(){
             return _largehit;

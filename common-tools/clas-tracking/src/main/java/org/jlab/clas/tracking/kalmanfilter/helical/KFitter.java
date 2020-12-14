@@ -2,10 +2,8 @@ package org.jlab.clas.tracking.kalmanfilter.helical;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import java.util.HashMap;
 import java.util.Map;
-
 import org.jlab.geom.prim.Point3D;
 import org.jlab.io.base.DataEvent;
 
@@ -36,19 +34,19 @@ public class KFitter {
     }
     
     public KFitter(Helix helix, Matrix cov, DataEvent event, Swim swimmer, double Xb, double Yb, 
-            double Zref, List<Surface> measSurfaces) {
+                   double Zref, List<Surface> measSurfaces) {
         _Xb = Xb;
         _Yb = Yb;
         _tarShift = Zref;
-        this.init(helix, cov, event, swimmer, Xb, Yb, 
-             Zref, mv, measSurfaces);
+        this.init(helix, cov, swimmer, Xb, Yb, Zref, mv, measSurfaces);
     }
-    //private Matrix iCov;
-    public void init(Helix helix, Matrix cov, DataEvent event, Swim swimmer, double Xb, double Yb, 
-            double Zref, MeasVecs mv, List<Surface> measSurfaces) {
+
+    public void init(Helix helix, Matrix cov, Swim swimmer, double Xb, double Yb,
+                     double Zref, MeasVecs mv, List<Surface> measSurfaces) {
+
         sv.shift = Zref;
-        //iCov = cov;
         mv.setMeasVecs(measSurfaces);
+
         if (sv.Layer != null) {
             sv.Layer.clear();
         } else {
@@ -88,7 +86,7 @@ public class KFitter {
             sv.Y0.add(ref.y());
             sv.Z0.add(ref.z());
         }
-        sv.init( helix, cov, this, swimmer);
+        sv.init(helix, cov, this, swimmer);
         this.NDF = mv.measurements.size()-6;
     }
 
@@ -118,10 +116,10 @@ public class KFitter {
             for (int k = 0; k < sv.X0.size() - 1; k++) {
                 if (sv.trackCov.get(k) == null || mv.measurements.get(k + 1) == null) {
                     return;
-                } 
-                sv.transport(k, k + 1, sv.trackTraj.get(k), sv.trackCov.get(k), mv.measurements.get(k+1), 
-                        swimmer); 
-                this.filter(k + 1, swimmer, 1); 
+                }
+                sv.transport(k, k + 1, sv.trackTraj.get(k), sv.trackCov.get(k), mv.measurements.get(k+1),
+                        swimmer);
+                this.filter(k + 1, swimmer, 1);
             }
             
             for (int k =  sv.X0.size() - 1; k>0 ;k--) {
@@ -135,8 +133,8 @@ public class KFitter {
             }
 
             // chi2
-            this.chi2=this.calc_chi2(swimmer); 
-            if(this.chi2<newchisq) { 
+            this.chi2=this.calc_chi2(swimmer);
+            if(this.chi2<newchisq) {
                 newchisq=this.chi2;
                 KFHelix = sv.setTrackPars();
                 finalStateVec = sv.trackTraj.get(0);
@@ -147,7 +145,6 @@ public class KFitter {
                 break;
             }
         }
-       
     }
     public Map<Integer, HitOnTrack> TrjPoints = new HashMap<Integer, HitOnTrack>();
 
@@ -189,12 +186,12 @@ public class KFitter {
         int ndf = -5;
         StateVec stv = sv.transported(0, 1, sv.trackTraj.get(0), mv.measurements.get(1), swimmer);
         double dh = mv.dh(1, stv);
-        if(mv.measurements.get(1).skip==false) { 
+        if(!mv.measurements.get(1).skip) {
             chi2 = dh*dh / mv.measurements.get(1).error;
             ndf++;
         }
         for(int k = 1; k< sv.X0.size()-1; k++) {
-            if(mv.measurements.get(k+1).skip==false) {
+            if(!mv.measurements.get(k + 1).skip) {
                 stv = sv.transported(k, k+1, stv, mv.measurements.get(k+1), swimmer);
                 dh = mv.dh(k+1, stv);
                 chi2 += dh*dh / mv.measurements.get(k+1).error;
@@ -206,8 +203,7 @@ public class KFitter {
     
     private void filter(int k, Swim swimmer, int dir) {
 
-        if (sv.trackTraj.get(k) != null && sv.trackCov.get(k).covMat != null 
-                && mv.measurements.get(k).skip == false) {
+        if (sv.trackTraj.get(k) != null && sv.trackCov.get(k).covMat != null && !mv.measurements.get(k).skip) {
 
             double[] K = new double[5];
             double V = mv.measurements.get(k).error;
@@ -226,8 +222,7 @@ public class KFitter {
             };
 
             Matrix Ci = null;
-            if (this.isNonsingular(sv.trackCov.get(k).covMat) == false) {
-                //System.err.println("Covariance Matrix is non-invertible - quit filter!");
+            if (!this.isNonsingular(sv.trackCov.get(k).covMat)) {
                 return;
             }
             try {
@@ -241,16 +236,13 @@ public class KFitter {
             } catch (Exception e) {
                 return;
             }
-            if (Ca != null && this.isNonsingular(Ca) == false) {
-                //System.err.println("Covariance Matrix Ca is non-invertible - quit filter!");
+            if (Ca != null && !this.isNonsingular(Ca)) {
                 return;
             }
             
-            if (Ca != null && this.isNonsingular(Ca) == true) {
+            if (Ca != null && this.isNonsingular(Ca)) {
                 if (Ca.inverse() != null) {
-                    Matrix CaInv = Ca.inverse();
-                    sv.trackCov.get(k).covMat = CaInv;
-                    //System.err.println("Error: e");
+                    sv.trackCov.get(k).covMat = Ca.inverse();
                 } else {
                     return;
                 }
@@ -265,7 +257,7 @@ public class KFitter {
                     K[j] += H[i] * sv.trackCov.get(k).covMat.get(j, i) / V;
                 } 
             }
-            if(sv.straight == true) {
+            if(sv.straight) {
                 //for (int i = 0; i < 5; i++) {
                     K[2] = 0;
                 //}

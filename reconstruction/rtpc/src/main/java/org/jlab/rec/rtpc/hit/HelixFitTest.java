@@ -69,6 +69,9 @@ public class HelixFitTest {
         Vector3 v2 = new Vector3(track.get(numhits-1).x()-ho.get_A(),track.get(numhits-1).y()-ho.get_B(),0);
         double psi = Math.toRadians(v1.theta(v2)); //angle theta for helix
         double momfit =  ho.get_Mom();
+        double x0 = ho.get_X0();
+        double y0 = ho.get_Y0();
+        double z0 = ho.get_Z0();
         double px = ho.get_px();
         double py = ho.get_py();
         double pz = ho.get_pz();
@@ -126,7 +129,7 @@ public class HelixFitTest {
         if(tl != 0 && !Double.isNaN(tl)) dEdx = ADCsum/tl;
         if(TID != 0 && numhits > minhitcount){
             newrecotrackmap.put(TID, track);
-            finaltrackinfomap.put(TID, new FinalTrackInfo(px,py,pz,vz,theta,phi,numhits,tl,ADCsum,dEdx,ho.get_Rho(),A,B,chi2));
+            finaltrackinfomap.put(TID, new FinalTrackInfo(px,py,pz,vz,theta,phi,numhits,tl,ADCsum,dEdx,ho.get_Rho(),A,B,chi2, x0, y0, z0));
         }
 
     }

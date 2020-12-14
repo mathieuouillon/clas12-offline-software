@@ -547,7 +547,7 @@ public class Helix {
     
     public enum Units {
         MM (10.0),
-        CM   (1.0);
+        CM (1.0);
 
         private final double unit;  
         Units(double unit) {
@@ -584,8 +584,8 @@ public class Helix {
         LightVel = aLIGHTVEL;
     }
 
-    public static final double LIGHTVEL = 0.0000299792458;       // velocity of light (cm/ns) - conversion factor from radius in mm to momentum in GeV/c 
+    public static final double LIGHTVEL = 0.0000299792458;       // velocity of light (cm/ns) - conversion factor from radius in mm to momentum in GeV/c
     
-    private static double LightVel = 0.0000299792458;       // velocity of light (cm/ns) - conversion factor from radius in mm to momentum in GeV/c 
+    private static double LightVel = 0.0000299792458;       // velocity of light (cm/ns) - conversion factor from radius in mm to momentum in GeV/c
     private static double unitScale = 1;
 }
