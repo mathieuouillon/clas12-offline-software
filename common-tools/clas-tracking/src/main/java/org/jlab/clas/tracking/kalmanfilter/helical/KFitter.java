@@ -104,7 +104,7 @@ public class KFitter {
         this.resiCut = resiCut;
     }
 
-    public int totNumIter = 5;
+    public int totNumIter = 1;
     double newChisq = Double.POSITIVE_INFINITY;
                             
     public void runFitter(Swim swimmer) {
