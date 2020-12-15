@@ -74,7 +74,7 @@ public class RTPCEngine extends ReconstructionEngine{
         return true;
     }
 
-
+    int i = 0;
 
     @Override
     public boolean processDataEvent(DataEvent event) {
@@ -109,7 +109,8 @@ public class RTPCEngine extends ReconstructionEngine{
         magfield = 50 * magfieldfactor;
 
 
-        if(event.hasBank("RTPC::adc")){
+        if(event.hasBank("RTPC::adc") && i < 2000){
+
             params.init(this.getConstantsManager(), runNo);
 
             SignalSimulation SS = new SignalSimulation(hits,params,simulation); //boolean is for simulation
@@ -138,8 +139,10 @@ public class RTPCEngine extends ReconstructionEngine{
         else{
             return true;
         }
-        return true;
 
+        i++;
+
+        return true;
     }
 
     public static void main(String[] args){

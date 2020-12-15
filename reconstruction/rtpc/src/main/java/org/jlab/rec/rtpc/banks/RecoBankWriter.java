@@ -104,8 +104,8 @@ public class RecoBankWriter {
             bank.setFloat("max_row", row, (float) largepad.row());
             bank.setFloat("max_col", row, (float) largepad.col());
             bank.setFloat("min_time", row, (float) hitvec.smallhit().time());
-            bank.setFloat("max_time", row, (float) (Math.PI/2.-Math.atan(track.getKFHelix().getTanL())));
-            bank.setFloat("min_radius", row, (float) track.getKFHelix().getPhi0());
+            bank.setFloat("max_time", row, (float) (Math.toDegrees(Math.PI/2.-Math.atan(track.getKFHelix().getTanL()))));
+            bank.setFloat("min_radius", row, (float) Math.toDegrees(track.getKFHelix().getPhi0()));
             bank.setFloat("max_radius", row, (float) track.getKFHelix().getPx());
             bank.setFloat("min_phi", row, (float) track.getKFHelix().getPy());
             bank.setFloat("max_phi", row, (float) track.getKFHelix().getPz());
