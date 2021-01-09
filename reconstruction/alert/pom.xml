@@ -47,6 +47,12 @@
           <version>6.5.12-SNAPSHOT</version>
           <scope>compile</scope>
       </dependency>
+      <dependency>
+          <groupId>org.jlab.clas</groupId>
+          <artifactId>clas-tracking</artifactId>
+          <version>6.5.12-SNAPSHOT</version>
+          <scope>compile</scope>
+      </dependency>
 
   </dependencies>
 <build>
