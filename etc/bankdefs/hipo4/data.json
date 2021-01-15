@@ -504,7 +504,6 @@
       { "name":"wire"      , "type":"S", "info":"wire number (1..)"},
       { "name":"doca"      , "type":"F", "info":"doca value"},
       { "name":"adc"       , "type":"F", "info":"adc value"}
-
     ]
   }
 ]

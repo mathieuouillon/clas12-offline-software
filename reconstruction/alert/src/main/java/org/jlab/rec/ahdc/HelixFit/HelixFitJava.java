@@ -820,30 +820,22 @@ public class HelixFitJava {
 	  }
 
 	  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-	  public HelixFitObject HelixFit(int PointNum, double szPos[][], int fit_track_to_beamline)// double R, double A, double B,
-	    //double Phi_deg, double Theta_deg, double Z0, int fit_track_to_beamline )
-	  {
-	    double PI=Math.acos(0.0)*2;
-	    //double Rho=0,Phi=0,Theta=0,X0=0,Y0=0,DCA=0,Chi2=0;
-            double Phi_deg;
-            double Theta_deg;
-            
-	    HelixFitObject h = helix_fit(PointNum, szPos, fit_track_to_beamline);
-	    
-	    Phi_deg=Math.toDegrees(h.get_Phi());
-            if(Phi_deg >= 180){
-                Phi_deg -= 360;
-            }
-            if(Phi_deg < -180){
-                Phi_deg += 360;
-            }
-	    Theta_deg=Math.toDegrees(h.get_Theta()); 
-            h.set_Phi(Phi_deg);
-            h.set_Theta(Theta_deg);
-            
+	  public HelixFitObject HelixFit(int PointNum, double[][] szPos, int fit_track_to_beamline) {
 
-            //System.out.println("DOCA " + h.get_DCA());
-	    return h;
+		HelixFitObject h = helix_fit(PointNum, szPos, fit_track_to_beamline);
+
+		double Phi_deg=Math.toDegrees(h.get_Phi());
+		if(Phi_deg >= 180){
+			Phi_deg -= 360;
+		}
+		if(Phi_deg < -180){
+			Phi_deg += 360;
+		}
+		double Theta_deg=Math.toDegrees(h.get_Theta());
+		h.set_Phi(Phi_deg);
+		h.set_Theta(Theta_deg);
+
+		return h;
 	  }
 
 }

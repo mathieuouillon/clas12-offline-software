@@ -8,9 +8,9 @@
             <column name="otid"    num="5"  type="int32"   info="Track ID of the original track that generated the first particle entering the sensitive volume"/>
             <column name="trackE"  num="6"  type="float64" info="Energy of the track"/>
             <column name="totEdep" num="7"  type="float64" info="Total Energy Deposited"/>
-            <column name="avg_x"    num="8"  type="float64" info="Average X position in global reference system"/>
-            <column name="avg_y"    num="9"  type="float64" info="Average Y position in global reference system"/>
-            <column name="avg_z"    num="10" type="float64" info="Average Z position in global reference system"/>
+            <column name="avgX"    num="8"  type="float64" info="Average X position in global reference system"/>
+            <column name="avgY"    num="9"  type="float64" info="Average Y position in global reference system"/>
+            <column name="avgZ"    num="10" type="float64" info="Average Z position in global reference system"/>
             <column name="avg_lx"   num="11" type="float64" info="Average X position in local reference system"/>
             <column name="avg_ly"   num="12" type="float64" info="Average Y position in local reference system"/>
             <column name="avg_lz"   num="13" type="float64" info="Average Z position in local reference system"/>

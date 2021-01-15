@@ -44,10 +44,9 @@ public class Cluster extends ArrayList<PreCluster> {
     @Override
     public String toString() {
         return "Cluster{" +
-                "_Radius=" + _Radius +
-                ", _Phi=" + _Phi +
-                ", _U=" + _U +
-                ", _V=" + _V +
+                "_X=" + _X +
+                ", _Y=" + _Y +
+                ", _Z=" + _Z +
                 '}';
     }
 

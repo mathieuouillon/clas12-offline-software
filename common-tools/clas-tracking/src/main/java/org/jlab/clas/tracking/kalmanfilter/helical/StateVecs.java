@@ -1,9 +1,6 @@
 package org.jlab.clas.tracking.kalmanfilter.helical;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.jlab.geom.prim.Vector3D;
 import org.jlab.geom.prim.Point3D;
@@ -12,6 +9,8 @@ import Jama.Matrix;
 import org.jlab.clas.swimtools.Swim;
 import org.jlab.clas.tracking.kalmanfilter.helical.MeasVecs.MeasVec;
 import org.jlab.clas.tracking.trackrep.Helix;
+
+import javax.swing.plaf.nimbus.State;
 
 
 public class StateVecs {
@@ -34,15 +33,12 @@ public class StateVecs {
     public List<Double> Y0;
     public List<Double> Z0; // reference points
     public double shift; // target shift
-    public List<Integer> Layer;
-    public List<Integer> Sector;
 
     double[] value = new double[4]; // x,y,z,phi
     double[] swimPars = new double[7];
     B Bf = new B(0);
 
-    public double[] getStateVecPosAtMeasSite(int k, StateVec iVec, MeasVec mv, Swim swim, 
-            boolean useSwimmer) {
+    public double[] getStateVecPosAtMeasSite(int k, StateVec iVec, MeasVec mv, Swim swim, boolean useSwimmer) {
         this.resetArrays(swimPars);
         this.resetArrays(value);
 
@@ -167,14 +163,7 @@ public class StateVecs {
                 if(useSwimmer==false) {
                     double stepSize = 5; //mm
                     int nSteps = (int) (r/stepSize);
-
                     double dist = 0;
-
-//                    for(int i = 1; i<nSteps; i++) {
-//                        dist = (double) (i*stepSize);
-//                        this.iterateHelixAtR(2, k, kVec, swim, dist, Bf, ps);
-//                    }
-//                    this.iterateHelixAtR(2, k, kVec, swim, r, Bf, ps);
                     for(int i = 1; i<nSteps; i++) {
                         dist = (double) (i*stepSize);
                         this.setHelixPars(kVec, swim);
@@ -248,6 +237,7 @@ public class StateVecs {
         // new state:
         return newVec;
     }
+
     private void tranState(int f, StateVec iVec, Swim swimmer) {
 
         Bf.swimmer = swimmer;
@@ -285,8 +275,7 @@ public class StateVecs {
 
     }
 
-    public StateVec transported(int i, int f, StateVec iVec, MeasVec mv,
-            Swim swimmer) {
+    public StateVec transported(int i, int f, StateVec iVec, MeasVec mv, Swim swimmer) {
 
         // transport stateVec...
         StateVec fVec = new StateVec(f);
@@ -316,11 +305,8 @@ public class StateVecs {
         return fVec;
     }
 
-    public void transport(int i, int f, StateVec iVec, CovMat icovMat, MeasVec mv,
-            Swim swimmer) {
-        //if (iVec.phi0 < 0) {
-        //    iVec.phi0 += 2. * Math.PI;
-        //}
+    public void transport(int i, int f, StateVec iVec, CovMat icovMat, MeasVec mv, Swim swimmer) {
+
         StateVec fVec = this.transported(i, f, iVec, mv, swimmer);
 
         // now transport covMat...
@@ -369,23 +355,13 @@ public class StateVecs {
         Matrix Cpropagated = FT.times(icovMat.covMat).times(F);
         if (Cpropagated != null) {
             CovMat fCov = new CovMat(f);
-            fCov.covMat = Cpropagated.plus(this.Q(iVec, f - i));
+            fCov.covMat = Cpropagated.plus(this.Q(iVec, fVec, f - i));
             //CovMat = fCov;
             this.trackCov.put(f, fCov);
         }
     }
-    private double get_t_ov_X0(double radius) {
-        double value = 0;
-        return value;
-    }
 
-    private double detMat_Z_ov_A_timesThickn(double radius) {
-        double value = 0;
-        return value;
-    }
-
-
-    private Matrix Q(StateVec iVec, int dir) {
+    private Matrix Q(StateVec iVec, StateVec fVec, int dir) {
 
         Matrix Q = new Matrix(new double[][]{
             {0, 0, 0, 0, 0},
@@ -395,29 +371,23 @@ public class StateVecs {
             {0, 0, 0, 0, 0}
         });
 
-        // if (iVec.k % 2 == 1 && dir > 0) {
+        //if (iVec.k % 2 == 1 && dir > 0) {
         if (dir >99999990 ) {
-            Vector3D trkDir = this.P(iVec.k).asUnit();
-            Vector3D trkPos = this.X(iVec.k);
-            double x = trkPos.x();
-            double y = trkPos.y();
-            double z = trkPos.z();
-            double ux = trkDir.x();
-            double uy = trkDir.y();
-            double uz = trkDir.z();
-
-            double cosEntranceAngle = Math.abs((x * ux + y * uy + z * uz) / Math.sqrt(x * x + y * y + z * z));
+            System.out.println("Test (1)");
+            Point3D start = new Point3D(iVec.x, iVec.y, iVec.z);
+            Point3D end = new Point3D(fVec.x, fVec.y, fVec.z);
+            double distance = start.distance(end);
 
             double pt = Math.abs(1. / iVec.kappa);
             double pz = pt * iVec.tanL;
             double p = Math.sqrt(pt * pt + pz * pz);
 
-            //double t_ov_X0 = 2. * 0.32 / Constants.SILICONRADLEN; //path length in radiation length units = t/X0 [true path length/ X0] ; Si radiation length = 9.36 cm
-            double t_ov_X0 = this.get_t_ov_X0(Math.sqrt(iVec.x*iVec.x+iVec.y*iVec.y)); //System.out.println(Math.log(t_ov_X0)/9.+" rad "+Math.sqrt(iVec.x*iVec.x+iVec.y*iVec.y)+" t/x0 "+t_ov_X0);
-            double mass = MassHypothesis(2);   // assume given mass hypothesis (2=pion)
+            double x0 = 804 * 10; // radiation length in helium carbon dioxide in cm found on https://arxiv.org/ftp/arxiv/papers/1110/1110.6761.pdf
+            double rho = 0.538*1e-3; // density in helium carbon dioxide in g/cm3 found on https://arxiv.org/ftp/arxiv/papers/1110/1110.6761.pdf
+            double t_ov_X0 = distance/(rho*x0);
+            double mass = MassHypothesis(4);   // assume given mass hypothesis 4=proton
             double beta = p / Math.sqrt(p * p + mass * mass); // use particle momentum
-            double pathLength = t_ov_X0 / cosEntranceAngle;
-            double sctRMS = (0.00141 / (beta * p)) * Math.sqrt(pathLength) * (1 + Math.log10(pathLength)/9.); // Highland-Lynch-Dahl formula
+            double sctRMS = (0.00141 / (beta * p)) * Math.sqrt(t_ov_X0) * (1 + Math.log10(t_ov_X0)/9.); // Highland-Lynch-Dahl formula
 
             Q = new Matrix(new double[][]{
                 {0, 0, 0, 0, 0},
@@ -453,8 +423,7 @@ public class StateVecs {
         }
     }
 
-    private void setHelix(Helix util, double x0, double y0, double z0, double px0, double py0, double pz0,
-            int q, double B) {
+    private void setHelix(Helix util, double x0, double y0, double z0, double px0, double py0, double pz0, int q, double B) {
         util.setTurningSign(q);
         util.setB(B);
         double pt = Math.sqrt(px0*px0 + py0*py0);
@@ -522,8 +491,7 @@ public class StateVecs {
         return phi;
     }
 
-    private void iterateHelixAtR(int it, int k, StateVec kVec, Swim swim,
-            double r, B Bf, Point3D ps) {
+    private void iterateHelixAtR(int it, int k, StateVec kVec, Swim swim, double r, B Bf, Point3D ps) {
         for(int i = 0; i < it; i++) {
             this.setHelixPars(kVec, swim);
             ps = util.getHelixPointAtR(r);
@@ -625,7 +593,6 @@ public class StateVecs {
         }
     }
 
-    //public String massHypo = "pion";
     public double MassHypothesis(int H) {
         double piMass = 0.13957018;
         double KMass = 0.493677;
@@ -722,13 +689,11 @@ public class StateVecs {
         return new Helix(X.x(), X.y(), X.z(), P.x(), P.y(), P.z(), q, B, X0.get(0), Y0.get(0), util.units);
     }
     public StateVec initSV = new StateVec(0);
-    public void init(Helix trk, Matrix cov, KFitter kf,
-            Swim swimmer) {
+
+    public void init(Helix trk, Matrix cov, KFitter kf, Swim swimmer) {
         this.units = trk.getUnitScale();
         this.lightVel = trk.getLIGHTVEL();
         this.util = trk;
-        //init stateVec
-        //StateVec initSV = new StateVec(0);
         initSV.x = - trk.getD0() * Math.sin(trk.getPhi0());
         initSV.y = trk.getD0() * Math.cos(trk.getPhi0());
         initSV.z = trk.getZ0();
@@ -764,17 +729,7 @@ public class StateVecs {
 
         this.trackTraj.put(0, initSV);
         CovMat initCM = new CovMat(0);
-        Matrix covKF = cov.copy(); 
-    /*    
-        System.out.println("----------------");
-        for(int ic = 0; ic<5; ic++) {
-            for(int ir = 0; ir<5; ir++) {
-                if(ic==ir) {
-                    System.out.println(Math.sqrt(covKF.get(ic, ir)));
-                }
-            }
-        }
-    */
+        Matrix covKF = cov.copy();
         covKF.set(2, 2, cov.get(2, 2)*600 );
 
         initCM.covMat = covKF;

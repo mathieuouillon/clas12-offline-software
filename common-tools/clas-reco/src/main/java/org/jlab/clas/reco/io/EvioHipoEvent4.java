@@ -71,7 +71,7 @@ public class EvioHipoEvent4 {
     public void fillHipoEventAHDC(Event hipoEvent, EvioDataEvent evioEvent){
         if(evioEvent.hasBank("AHDC::dgtz")){
             EvioDataBank evioBank = (EvioDataBank) evioEvent.getBank("AHDC::dgtz");
-            Bank  hipoTDC = new Bank(schemaFactory.getSchema("AHDC::adc"), evioBank.rows());
+            Bank hipoTDC = new Bank(schemaFactory.getSchema("AHDC::adc"), evioBank.rows());
             for(int i = 0; i < evioBank.rows(); i++){
                 hipoTDC.putByte("superlayer", i,  (byte)  evioBank.getInt("superlayer",i));
                 hipoTDC.putByte("layer", i,  (byte)  evioBank.getInt("layer",i));
@@ -561,8 +561,8 @@ public class EvioHipoEvent4 {
     }
     
    public void fillHipoEventTrueInfo(Event hipoEvent, EvioDataEvent evioEvent){
-        
-        String[]        bankNames = new String[]{"BMT","BST","CND","CTOF","DC","EC","FMT","FTCAL","FTHODO","FTOF","FTTRK","HTCC","LTCC","PCAL","RICH","RTPC"};
+
+        String[]        bankNames = new String[]{"BMT","BST","CND","CTOF","DC","EC","FMT","FTCAL","FTHODO","FTOF","FTTRK","HTCC","LTCC","PCAL","RICH","RTPC","AHDC"};
         DetectorType[]  bankTypes = new DetectorType[]{DetectorType.BMT,
                                                        DetectorType.BST,
                                                        DetectorType.CND,
@@ -578,7 +578,8 @@ public class EvioHipoEvent4 {
                                                        DetectorType.LTCC,
                                                        DetectorType.ECAL,
                                                        DetectorType.RICH,
-                                                       DetectorType.RTPC};
+                                                       DetectorType.RTPC,
+                                                       DetectorType.AHDC};
         int rows = 0;
         for(int k = 0; k < bankNames.length; k++){
             if(evioEvent.hasBank(bankNames[k]+"::true")==true){

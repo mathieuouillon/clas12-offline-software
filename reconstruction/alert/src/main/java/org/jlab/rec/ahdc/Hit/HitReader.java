@@ -23,12 +23,6 @@ public class HitReader {
 
     public void fetch_AHDCHits(DataEvent event){
 
-        if (!event.hasBank("AHDC::adc")) {
-            System.err.println("there is no AHDC bank ");
-            _AHDCHits = new ArrayList<Hit>();
-            return;
-        }
-
         List<Hit> hits = new ArrayList<Hit>();
 
         DataBank bankDGTZ = event.getBank("AHDC::adc");
@@ -41,11 +35,6 @@ public class HitReader {
 
         if (event.hasBank("AHDC::adc")) {
             for (int i = 0; i < rows; i++) {
-
-                if (bankDGTZ.getFloat("adc", i) < 0) {
-                    continue;
-                }
-
                 id[i] = i + 1;
                 superlayer[i] = bankDGTZ.getByte("superlayer", i);
                 layer[i] = bankDGTZ.getByte("layer", i);
@@ -60,5 +49,27 @@ public class HitReader {
             }
         }
         this.set_AHDCHits(hits);
+    }
+
+    public List<TrueHit> fetch_TrueAHDCHits(DataEvent event){
+        List<TrueHit> truehits = new ArrayList<TrueHit>();
+        DataBank bankSIMU = event.getBank("MC::True");
+        int rows = bankSIMU.rows();
+        int[] pid = new int[rows];
+        float[] x_true = new float[rows];
+        float[] y_true = new float[rows];
+        float[] z_true = new float[rows];
+
+        if(event.hasBank("MC::True")){
+            for (int i = 0; i < rows; i++) {
+                pid[i] = bankSIMU.getInt("pid",i);
+                x_true[i] = bankSIMU.getFloat("avgX",i);
+                y_true[i] = bankSIMU.getFloat("avgY",i);
+                z_true[i] = bankSIMU.getFloat("avgZ",i);
+                TrueHit truehit = new TrueHit(pid[i], x_true[i],y_true[i],z_true[i]);
+                truehits.add(truehit);
+            }
+        }
+        return truehits;
     }
 }

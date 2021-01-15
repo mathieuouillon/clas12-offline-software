@@ -15,6 +15,7 @@ public class Hit implements Comparable<Hit> {
     private double _X;
     private double _Y;
 
+
     public Hit(int _Super_layer, int _Layer, int _Wire, double _Doca) {
         this._Super_layer = _Super_layer;
         this._Layer = _Layer;

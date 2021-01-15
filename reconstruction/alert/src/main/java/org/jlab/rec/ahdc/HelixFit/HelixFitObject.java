@@ -37,7 +37,7 @@ public class HelixFitObject {
         _Z0 = Z0;
         _DCA = DCA;
         _Chi2 = Chi2;
-        _magfield = 50;
+        _magfield = 5;
     }
     public double get_Rho(){
         return _Rho;
@@ -88,7 +88,7 @@ public class HelixFitObject {
         return _Chi2;
     }
     public double get_Mom(){
-        return 0.3*_magfield*Math.abs(_Rho)/(10*Math.sin(Math.toRadians(_Theta)));
+        return 0.3*_magfield*Math.abs(_Rho)/(Math.sin(Math.toRadians(_Theta)));
     }
     public double get_px(){
         return get_Mom()*Math.cos(Math.toRadians(_Phi))*Math.sin(Math.toRadians(_Theta));
