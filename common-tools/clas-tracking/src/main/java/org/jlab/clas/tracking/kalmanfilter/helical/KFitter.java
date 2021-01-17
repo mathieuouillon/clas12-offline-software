@@ -24,7 +24,7 @@ public class KFitter {
     private double _Xb; //beam axis pars
     private double _Yb;
     private double resiCut = 100;//residual cut for the measurements
-    public int totNumIter = 5; // Number of iteration of the Kalman Filter
+    public int totNumIter = 1; // Number of iteration of the Kalman Filter
     public Map<Integer, HitOnTrack> TrjPoints = new HashMap<Integer, HitOnTrack>();
     public Helix KFHelix;
     public double chi2 = 0;
@@ -89,7 +89,7 @@ public class KFitter {
         }
 
         sv.init(helix, cov, this, swimmer);
-        // this.NDF = mv.measurements.size() - 6;
+        this.NDF = mv.measurements.size() - 6;
     }
                             
     public void runFitter(Swim swimmer) {
@@ -101,7 +101,7 @@ public class KFitter {
             for (int k = 0; k < sv.X0.size() - 1; k++) {
                 if (sv.trackCov.get(k) == null || mv.measurements.get(k + 1) == null) {return;}
                 sv.transport(k, k + 1, sv.trackTraj.get(k), sv.trackCov.get(k), mv.measurements.get(k+1), swimmer);
-                this.filter(k + 1, swimmer, 1); 
+                this.filter(k + 1, swimmer, 1);
             }
             
             for (int k =  sv.X0.size() - 1; k>0 ;k--) {
@@ -148,14 +148,15 @@ public class KFitter {
     
     private void filter(int k, Swim swimmer, int dir) {
         if (sv.trackTraj.get(k) != null && sv.trackCov.get(k).covMat != null && !mv.measurements.get(k).skip) {
-            double[] K = new double[5]; // Gain matrix
-            Arrays.fill(K,0.0);
+            double[] vals = {0., 0., 0., 0., 0.};
+            Matrix K = new Matrix(vals); // Gain matrix
             double V = mv.measurements.get(k).error; // measurement error covariance matrix
-
-            double dh = mv.dh(k, sv.trackTraj.get(k));
+            Matrix V = new Matrix(V);
+            double dh = mv.dh(k, sv.trackTraj.get(k)); // measurement residual -> distance
             
             //get the projector Matrix
             double[] H = mv.H(sv.trackTraj.get(k), sv,  mv.measurements.get(k), swimmer, dir);
+            Matrix H = new Matrix(H);
             double[][] HTGH = new double[][]{
                 {H[0] * H[0] / V, H[0] * H[1] / V, H[0] * H[2] / V, H[0] * H[3] / V, H[0] * H[4] / V},
                 {H[1] * H[0] / V, H[1] * H[1] / V, H[1] * H[2] / V, H[1] * H[3] / V, H[1] * H[4] / V},
@@ -164,41 +165,10 @@ public class KFitter {
                 {H[4] * H[0] / V, H[4] * H[1] / V, H[4] * H[2] / V, H[4] * H[3] / V, H[4] * H[4] / V}
             };
 
-            Matrix Ci = null;
+            Matrix C = sv.trackCov.get(k).covMat;
+            Matrix interm = (H.times(C)).times(H.transpose);
 
-            if (!this.isNonsingular(sv.trackCov.get(k).covMat)) {
-                return;
-            }
-            try {
-                Ci = sv.trackCov.get(k).covMat.inverse();
-            } catch (Exception e) {
-                return;
-            }
-            Matrix Ca = null;
-            try {
-                Ca = Ci.plus(new Matrix(HTGH));
-            } catch (Exception e) {
-                return;
-            }
-            if (Ca != null && !this.isNonsingular(Ca)) {
-                return;
-            }
-            if (Ca != null && this.isNonsingular(Ca)) {
-                if (Ca.inverse() != null) {
-                    sv.trackCov.get(k).covMat = Ca.inverse();
-                } else {
-                    return;
-                }
-            }
-            else {
-                return;
-            }
-            
-            for (int j = 0; j < 5; j++) {
-                for (int i = 0; i < 5; i++) {
-                    K[j] += H[i] * sv.trackCov.get(k).covMat.get(j, i) / V;
-                }
-            }
+            sv.printMatrix(interm);
 
             double drho_filt = sv.trackTraj.get(k).d_rho;
             double phi0_filt = sv.trackTraj.get(k).phi0;

@@ -60,19 +60,22 @@ public class RecUtilities {
 
         List<Surface> KFSites = new ArrayList<Surface>();
         int id = 0;
-        for(TrueHit hit : AHDC_Hits){
-            Point3D origin = new Point3D(hit.get_X(), hit.get_Y(), hit.get_Z());
-            Point3D center = new Point3D(0,0,0);
-            Vector3D normal = new Vector3D(0,0,1);
-            double theta = 2*Math.PI;
-            Arc3D arc = new Arc3D(origin,center,normal,theta);
-            double height = Math.hypot(hit.get_X(), hit.get_Y());
-            Cylindrical3D cyl = new Cylindrical3D(arc,height);
-            Surface meas = new Surface(cyl,origin);
-            meas.setLayer(0);
-            meas.setError(0);
-            meas.setSector(0);
-            KFSites.add(meas);
+        for (TrueHit hit : AHDC_Hits) {
+            if (hit.get_Pid() == 2212) {
+                Point3D origin = new Point3D(hit.get_X(), hit.get_Y(), hit.get_Z());
+                Point3D center = new Point3D(0, 0, 0);
+                Vector3D normal = new Vector3D(0, 0, 1);
+                double theta = 2 * Math.PI;
+                Arc3D arc = new Arc3D(origin, center, normal, theta);
+                double height = Math.hypot(hit.get_X(), hit.get_Y());
+                Cylindrical3D cyl = new Cylindrical3D(arc, height);
+                Surface meas = new Surface(cyl, origin);
+                meas.setLayer(id);
+                meas.setError(0);
+                meas.setSector(0);
+                KFSites.add(meas);
+                id++;
+            }
         }
         return KFSites;
     }

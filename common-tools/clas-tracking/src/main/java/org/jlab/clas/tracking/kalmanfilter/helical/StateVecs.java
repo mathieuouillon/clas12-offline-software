@@ -34,7 +34,7 @@ public class StateVecs {
     public List<Double> Z0; // reference points
     public double shift; // target shift
 
-    double[] value = new double[4]; // x,y,z,phi
+    double[] value = new double[7]; // x,y,z,px,py,pz,phi
     double[] swimPars = new double[7];
     B Bf = new B(0);
 
@@ -180,14 +180,13 @@ public class StateVecs {
                     swimPars[2] = ps.z();
                     if(swimPars==null)
                         return null;
-                } else {
-
+                }
+                else {
                     this.setTrackPars(kVec, swim);
-                    swimPars = swim.SwimRho(r/units);
-                    if(swimPars==null)
-                        return null;
-                    for(int j =0; j < 3; j++) {
-                        swimPars[j]*=units;
+                    swimPars = swim.SwimRho(r / units);
+                    if (swimPars == null) return null;
+                    for (int j = 0; j < 3; j++) {
+                        swimPars[j] *= units;
                     }
                     kVec.x = swimPars[0];
                     kVec.y = swimPars[1];
@@ -198,7 +197,10 @@ public class StateVecs {
             value[0] = swimPars[0];
             value[1] = swimPars[1];
             value[2] = swimPars[2];
-            value[3] = this.calcPhi(kVec);
+            value[3] = swimPars[3];
+            value[4] = swimPars[4];
+            value[5] = swimPars[5];
+            value[6] = this.calcPhi(kVec);
 
         }
         return value;
@@ -210,13 +212,40 @@ public class StateVecs {
         if (pars == null) {
             return;
         }
-        //System.out.println(" k "+k+" "+pars[0]+", "+pars[1]);
+
         kVec.x = pars[0];
         kVec.y = pars[1];
         kVec.z = pars[2];
 
         kVec.alpha = new B(k, kVec.x, kVec.y, kVec.z, swimmer).alpha;
         kVec.phi = pars[3];
+
+        double Xc = X0.get(kVec.k) + (kVec.d_rho + kVec.alpha / kVec.kappa) * Math.cos(kVec.phi0);
+        double Yc = Y0.get(kVec.k) + (kVec.d_rho + kVec.alpha / kVec.kappa) * Math.sin(kVec.phi0);
+
+        double phi_f = Math.atan2(Yc - Y0.get(k), Xc - X0.get(k));
+
+        if (kVec.kappa < 0) {
+            phi_f = Math.atan2(-Yc + Y0.get(k), -Xc + X0.get(k));
+        }
+
+        if (phi_f < 0) {
+            phi_f += 2 * Math.PI;
+        }
+        double fphi0 = phi_f;
+        double fd_rho = (Xc - X0.get(k)) * Math.cos(phi_f) + (Yc - Y0.get(k)) * Math.sin(phi_f) - kVec.alpha / kVec.kappa;
+        //fkappa = iVec.kappa;
+        double fdz = Z0.get(kVec.k) - Z0.get(k) + kVec.dz - (kVec.alpha / kVec.kappa) * (phi_f - kVec.phi0) * kVec.tanL;
+        //ftanL = iVec.tanL;
+
+        if (fphi0 < 0) {
+            fphi0 += 2. * Math.PI;
+        }
+
+        kVec.phi0 = fphi0;
+        kVec.d_rho = fd_rho;
+        kVec.dz = fdz;
+
     }
 
     public StateVec newStateVecAtMeasSite(int k, StateVec kVec, MeasVec mv, Swim swimmer, boolean useSwimmer) {
@@ -289,18 +318,13 @@ public class StateVecs {
         B Bf = new B(i, x, y, z, swimmer);
 
         fVec.phi0 = iVec.phi0;
-
         fVec.d_rho = iVec.d_rho;
-
         fVec.kappa = iVec.kappa;
-
         fVec.dz = iVec.dz;
-
         fVec.tanL = iVec.tanL;
-
         fVec.alpha = Bf.alpha;
 
-        this.newStateVecAtMeasSite(f, fVec, mv, swimmer, true);
+        this.setStateVecPosAtMeasSite(f, fVec, mv, swimmer);
 
         return fVec;
     }
@@ -308,6 +332,9 @@ public class StateVecs {
     public void transport(int i, int f, StateVec iVec, CovMat icovMat, MeasVec mv, Swim swimmer) {
 
         StateVec fVec = this.transported(i, f, iVec, mv, swimmer);
+
+        printlnStateVec(iVec);
+        printlnStateVec(fVec);
 
         // now transport covMat...
         double dphi0_prm_del_drho = -1. / (fVec.d_rho + iVec.alpha / iVec.kappa) * Math.sin(fVec.phi0 - iVec.phi0);
@@ -356,11 +383,17 @@ public class StateVecs {
         if (Cpropagated != null) {
             CovMat fCov = new CovMat(f);
             fCov.covMat = Cpropagated.plus(this.Q(iVec, fVec, f - i));
-            //CovMat = fCov;
             this.trackCov.put(f, fCov);
         }
     }
 
+    /**
+     * Compute the multiple scattering noise for the covariance matrix
+     * @param iVec
+     * @param fVec
+     * @param dir
+     * @return
+     */
     private Matrix Q(StateVec iVec, StateVec fVec, int dir) {
 
         Matrix Q = new Matrix(new double[][]{
@@ -371,9 +404,7 @@ public class StateVecs {
             {0, 0, 0, 0, 0}
         });
 
-        //if (iVec.k % 2 == 1 && dir > 0) {
-        if (dir >99999990 ) {
-            System.out.println("Test (1)");
+        if (iVec.k % 2 == 1 && dir > 0) {
             Point3D start = new Point3D(iVec.x, iVec.y, iVec.z);
             Point3D end = new Point3D(fVec.x, fVec.y, fVec.z);
             double distance = start.distance(end);
@@ -397,7 +428,7 @@ public class StateVecs {
                 {0, 0, sctRMS*sctRMS * (iVec.kappa * iVec.tanL * (1 + iVec.tanL * iVec.tanL)), 0, sctRMS*sctRMS * (1 + iVec.tanL * iVec.tanL) * (1 + iVec.tanL * iVec.tanL)}
             });
         }
-
+        printMatrix(Q);
         return Q;
     }
 
@@ -743,6 +774,6 @@ public class StateVecs {
     }
 
     public void printlnStateVec(StateVec S) {
-        System.out.println(S.k + ") drho " + S.d_rho + " phi0 " + S.phi0 + " kappa " + S.kappa + " dz " + S.dz + " tanL " + S.tanL + " phi " + S.phi + " x " + S.x + " y " + S.y + " z " + S.z + " alpha " + S.alpha);
+        System.out.println(S.k + ") drho " + S.d_rho + " phi0 " + S.phi0 + " kappa " + S.kappa + " dz " + S.dz + " tanL " + S.tanL + " phi " + S.phi + " r = " + Math.hypot(S.x, S.y) + " x " + S.x + " y " + S.y + " z " + S.z + " alpha " + S.alpha);
     }
 }
