@@ -1,6 +1,8 @@
 package org.jlab.clas.tracking.kalmanfilter.helical;
 
+import java.awt.*;
 import java.util.*;
+import java.util.List;
 
 import org.jlab.geom.prim.Vector3D;
 import org.jlab.geom.prim.Point3D;
@@ -38,8 +40,7 @@ public class StateVecs {
     double[] swimPars = new double[7];
     B Bf = new B(0);
 
-    public double[] getStateVecPosAtMeasSite(int k, StateVec iVec, MeasVec mv, Swim swim, 
-            boolean useSwimmer) {
+    public double[] getStateVecPosAtMeasSite(int k, StateVec iVec, MeasVec mv, Swim swim, boolean useSwimmer) {
         this.resetArrays(swimPars);
         this.resetArrays(value);
 
@@ -72,7 +73,6 @@ public class StateVecs {
                 value[3] = 0.0;
                 return value;
             }
-            
             if(this.straight) {
                 Vector3D u = new Vector3D(-(Math.signum(kVec.kappa)) * Math.sin(kVec.phi0),
                                         (Math.signum(kVec.kappa)) * Math.cos(kVec.phi0),
@@ -140,40 +140,15 @@ public class StateVecs {
                 swimPars[0] = ps.x();
                 swimPars[1] = ps.y();
                 swimPars[2] = ps.z();
-
-//                    x = X0.get(0) + kVec.d_rho * Math.cos(kVec.phi0);
-//                    y = Y0.get(0) + kVec.d_rho * Math.sin(kVec.phi0);
-//                    z = Z0.get(0) + kVec.dz;
-//                    Bf = new B(kVec.k, x, y, z, swim);
-//                    kVec.alpha = Bf.alpha;
-//                    this.setTrackPars(kVec, swim);
-//                    swimPars = swim.SwimToPlaneBoundary(mv.surface.plane.point().toVector3D().dot(mv.surface.plane.normal())/units,
-//                            mv.surface.plane.normal(), 1);
-//                    if(swimPars==null)
-//                        return null;
-//                    for(int j =0; j < 3; j++) {
-//                        swimPars[j]*=units;
-//                    }
-//                    kVec.x = swimPars[0];
-//                    kVec.y = swimPars[1];
-//                    kVec.z = swimPars[2];
-
             }
             if(mv.surface.cylinder!=null) {
-                double r = 0.5*(mv.surface.cylinder.baseArc().radius()+mv.surface.cylinder.highArc().radius());
-                if(useSwimmer==false) {
+                double r = 0.5*(mv.surface.cylinder.baseArc().radius()+mv.surface.cylinder.highArc().radius()); // r est la valeur jusqu'au se propage la trajectoire
+                if(!useSwimmer) {
                     double stepSize = 5; //mm
                     int nSteps = (int) (r/stepSize);
-
                     double dist = 0;
-
-//                    for(int i = 1; i<nSteps; i++) {
-//                        dist = (double) (i*stepSize);
-//                        this.iterateHelixAtR(2, k, kVec, swim, dist, Bf, ps);
-//                    }
-//                    this.iterateHelixAtR(2, k, kVec, swim, r, Bf, ps);
                     for(int i = 1; i<nSteps; i++) {
-                        dist = (double) (i*stepSize);
+                        dist = i*stepSize;
                         this.setHelixPars(kVec, swim);
                         ps = util.getHelixPointAtR(dist);
                         kVec.x = ps.x();
@@ -188,15 +163,12 @@ public class StateVecs {
                     swimPars[2] = ps.z();
                     if(swimPars==null)
                         return null;
-                } else {
-
+                }
+                else {
                     this.setTrackPars(kVec, swim);
                     swimPars = swim.SwimRho(r/units);
-                    if(swimPars==null)
-                        return null;
-                    for(int j =0; j < 3; j++) {
-                        swimPars[j]*=units;
-                    }
+                    if(swimPars==null) return null;
+                    for(int j =0; j < 3; j++) {swimPars[j]*=units;}
                     kVec.x = swimPars[0];
                     kVec.y = swimPars[1];
                     kVec.z = swimPars[2];
@@ -231,6 +203,7 @@ public class StateVecs {
 
         StateVec newVec = kVec;
         double[] pars = this.getStateVecPosAtMeasSite(k, kVec, mv, swimmer, useSwimmer);
+
         if (pars == null) {
             return null;
         }
@@ -282,29 +255,15 @@ public class StateVecs {
 
     }
 
-    public StateVec transported(int i, int f, StateVec iVec, MeasVec mv,
-            Swim swimmer) {
-
+    public StateVec transported(int i, int f, StateVec iVec, MeasVec mv, Swim swimmer) {
         // transport stateVec...
-        StateVec fVec = new StateVec(f);
+        StateVec fVec = iVec;
 
-        if (iVec.phi0 < 0) {
-            iVec.phi0 += 2. * Math.PI;
-        }
+        if (iVec.phi0 < 0) {iVec.phi0 += 2. * Math.PI;}
         double x = X0.get(0) + iVec.d_rho * Math.cos(iVec.phi0);
         double y = Y0.get(0) + iVec.d_rho * Math.sin(iVec.phi0);
         double z = Z0.get(0) + iVec.dz;
         B Bf = new B(i, x, y, z, swimmer);
-
-        fVec.phi0 = iVec.phi0;
-
-        fVec.d_rho = iVec.d_rho;
-
-        fVec.kappa = iVec.kappa;
-
-        fVec.dz = iVec.dz;
-
-        fVec.tanL = iVec.tanL;
 
         fVec.alpha = Bf.alpha;
 
@@ -313,11 +272,10 @@ public class StateVecs {
         return fVec;
     }
 
-    public void transport(int i, int f, StateVec iVec, CovMat icovMat, MeasVec mv,
-            Swim swimmer) {
-        //if (iVec.phi0 < 0) {
-        //    iVec.phi0 += 2. * Math.PI;
-        //}
+
+
+    public void transport(int i, int f, StateVec iVec, CovMat icovMat, MeasVec mv, Swim swimmer) {
+        // Transport stateVec
         StateVec fVec = this.transported(i, f, iVec, mv, swimmer);
 
         // now transport covMat...
@@ -371,6 +329,60 @@ public class StateVecs {
             this.trackCov.put(f, fCov);
         }
     }
+
+    private void energyLoss(StateVec iVec, StateVec fVec, int f, Swim swimmer){
+        // The position of iVec (before propagation)
+        double x_start = X0.get(0) + iVec.d_rho * Math.cos(iVec.phi0);
+        double y_start = Y0.get(0) + iVec.d_rho * Math.sin(iVec.phi0);
+        double z_start = Z0.get(0) + iVec.dz;
+
+        // The postion of fVec (after propagation)
+        double x_end = X0.get(0) + fVec.d_rho * Math.cos(fVec.phi0);;
+        double y_end = Y0.get(0) + fVec.d_rho * Math.sin(fVec.phi0);
+        double z_end = Z0.get(0) + fVec.dz;
+
+        System.out.println("Start : X = " + x_start + " Y = "+ y_start + " Z = " + z_start);
+        System.out.println("End : X = " + x_end + " Y = "+ y_end + " Z = " + z_end);
+
+        // Compute the path of the helix between start and end (TODO : use helix path instead of basic distance)
+        double distance = Math.sqrt((x_end-x_start)*(x_end-x_start)+(y_end-y_start)*(y_end-y_start)+(z_end-z_start)*(z_end-z_start));
+        System.out.println("distance = " + distance);
+
+        double pt = Math.abs(1. / iVec.kappa);
+        double pz = pt * iVec.tanL;
+        double p = Math.sqrt(pt * pt + pz * pz); // GeV
+        double mass = MassHypothesis(4); // proton
+        double v = p/mass; // particle speed
+        double c = 0.000299792458;
+        double beta = p / Math.sqrt(p * p + mass * mass); // particle momentum
+        double m_e = 0.000510; // GeV
+        double r_e = 2.8179; // fm
+        double N_A = 6.022*Math.pow(10,23);
+        double K = 4*Math.PI*N_A*r_e*r_e*m_e*c*c;
+        double z = 1; // charge number of the proton
+        double Z = 2; // atomic number of helium
+        double A = 4.002602; // g/mol
+        double gamma = 1/(Math.sqrt(1-beta*beta));
+        double W_max = (2*m_e*c*c*beta*beta*gamma*gamma)/(1 + 2*gamma*m_e/mass + (m_e/mass)*(m_e/mass));
+        double I = 10*Z; // eV
+        double X = Math.log(beta*gamma);
+        // For Helium :
+        double X0 = 2.202; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
+        double X1 = 4.0; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
+        double a = 0.0114; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
+        double m = 7.625; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
+        double C = 11.139; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
+        double deltaX = 0;
+        if(X>X0 && X<X1) {deltaX = 4.6052*X + a*Math.pow((X1-X),m) + C;}
+        else if(X>X1) {deltaX = 4.6052*X + C;}
+        double deltaE = K*z*z*Z/A*1/(beta*beta)*(0.5*Math.log((2*m_e*c*c*beta*beta*gamma*gamma*W_max)/(I*I)) - beta*beta - deltaX/2)*distance;
+
+
+        iVec.set_ELoss(deltaE);
+    }
+
+
+
     private double get_t_ov_X0(double radius) {
         double value = 0;
         return value;
@@ -445,8 +457,10 @@ public class StateVecs {
     }
 
     private void resetArrays(double[] swimPars) {
-        for(int i = 0; i<swimPars.length; i++) {
-            swimPars[i] = 0.;
+        if (swimPars!= null){
+            for(int i = 0; i<swimPars.length; i++) {
+                swimPars[i] = 0.;
+            }
         }
     }
 
@@ -557,13 +571,13 @@ public class StateVecs {
         StateVec(int k) {
             this.k = k;
         }
-        private double[] _ELoss = new double[3];
+        private double _ELoss;
 
-        public double[] get_ELoss() {
+        public double get_ELoss() {
             return _ELoss;
         }
 
-        public void set_ELoss(double[] _ELoss) {
+        public void set_ELoss(double _ELoss) {
             this._ELoss = _ELoss;
         }
 

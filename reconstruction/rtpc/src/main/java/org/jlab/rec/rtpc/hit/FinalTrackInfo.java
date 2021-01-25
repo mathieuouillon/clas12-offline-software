@@ -28,12 +28,44 @@ public class FinalTrackInfo {
     private double _B;
     private double _chi2;
     private double _ADCsum;
-    private double _d_rho;
-    private double _phi_0;
-    private double _kappa;
-    private double _d_z;
-    private double _tanL;
     private Matrix _cov;
+
+    public double get_Omega() {
+        return _Omega;
+    }
+
+    public void set_Omega(double _Omega) {
+        this._Omega = _Omega;
+    }
+
+    public double get_TanL() {
+        return _TanL;
+    }
+
+    public void set_TanL(double _TanL) {
+        this._TanL = _TanL;
+    }
+
+    public double get_Phi0() {
+        return _Phi0;
+    }
+
+    public void set_Phi0(double _Phi0) {
+        this._Phi0 = _Phi0;
+    }
+
+    public double get_D0() {
+        return _D0;
+    }
+
+    public void set_D0(double _D0) {
+        this._D0 = _D0;
+    }
+
+    private double _Omega;
+    private double _TanL;
+    private double _Phi0;
+    private double _D0;
 
     public Helix getKFHelix() {
         return KFHelix;
@@ -71,7 +103,8 @@ public class FinalTrackInfo {
     public FinalTrackInfo(){}
     
     public FinalTrackInfo(double px, double py, double pz, double vz, double theta, double phi, int numhits, double tl,
-                          double ADCsum, double dEdx, double R, double A, double B, double chi2, double X0, double Y0, double Z0){
+                          double ADCsum, double dEdx, double R, double A, double B, double chi2, double X0, double Y0, double Z0,
+                          double omega, double tanL, double phi0, double d0){
         _px = px;
         _py = py;
         _pz = pz;
@@ -89,6 +122,10 @@ public class FinalTrackInfo {
         _X0 = X0;
         _Y0 = Y0;
         _Z0 = Z0;
+        _Omega = omega;
+        _TanL = tanL;
+        _Phi0 = phi0;
+        _D0 = d0;
     }
     
     public void set_px(double px){
@@ -118,21 +155,7 @@ public class FinalTrackInfo {
     public void set_vz(double vz){
         _vz = vz;
     }
-    public void set_d_rho(double _d_rho) {
-        this._d_rho = _d_rho;
-    }
-    public void set_phi_0(double _phi_0) {
-        this._phi_0 = _phi_0;
-    }
-    public void set_kappa(double _kappa) {
-        this._kappa = _kappa;
-    }
-    public void set_d_z(double _d_z) {
-        this._d_z = _d_z;
-    }
-    public void set_tanL(double _tanL) {
-        this._tanL = _tanL;
-    }
+
     public void set_cov(Matrix _cov) {
         this._cov = _cov;
     }
@@ -179,21 +202,7 @@ public class FinalTrackInfo {
     public double get_ADCsum(){
         return _ADCsum;
     }
-    public double get_d_rho() {
-        return _d_rho;
-    }
-    public double get_phi_0() {
-        return _phi_0;
-    }
-    public double get_kappa() {
-        return _kappa;
-    }
-    public double get_d_z() {
-        return _d_z;
-    }
-    public double get_tanL() {
-        return _tanL;
-    }
+
     public Matrix get_cov() {
         return _cov;
     }

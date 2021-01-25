@@ -27,7 +27,7 @@ public class KFitter {
     private double _tarShift; //targetshift
     private double _Xb; //beam axis pars
     private double _Yb;
-    private double resiCut = 100;//residual cut for the measurements
+    private double resiCut = 100; //residual cut for the measurements
     
     public void setMeasurements(List<Surface> measSurfaces) {
         mv.setMeasVecs(measSurfaces);
@@ -87,7 +87,7 @@ public class KFitter {
             sv.Z0.add(ref.z());
         }
         sv.init(helix, cov, this, swimmer);
-        this.NDF = mv.measurements.size()-6;
+        this.NDF = mv.measurements.size() - 6;
     }
 
     /**
@@ -104,7 +104,7 @@ public class KFitter {
         this.resiCut = resiCut;
     }
 
-    public int totNumIter = 1;
+    public int totNumIter = 5;
     double newChisq = Double.POSITIVE_INFINITY;
                             
     public void runFitter(Swim swimmer) {
@@ -114,22 +114,14 @@ public class KFitter {
         for (int it = 0; it < totNumIter; it++) {
             this.chi2 = 0;
             for (int k = 0; k < sv.X0.size() - 1; k++) {
-                if (sv.trackCov.get(k) == null || mv.measurements.get(k + 1) == null) {
-                    return;
-                }
-                sv.transport(k, k + 1, sv.trackTraj.get(k), sv.trackCov.get(k), mv.measurements.get(k+1),
-                        swimmer);
+                if (sv.trackCov.get(k) == null || mv.measurements.get(k + 1) == null) {return;}
+                sv.transport(k, k + 1, sv.trackTraj.get(k), sv.trackCov.get(k), mv.measurements.get(k+1), swimmer);
                 this.filter(k + 1, swimmer, 1);
             }
-            
             for (int k =  sv.X0.size() - 1; k>0 ;k--) {
-                if (sv.trackCov.get(k) == null || mv.measurements.get(k - 1) == null) {
-                    return;
-                }
-                sv.transport(k, k - 1, sv.trackTraj.get(k), sv.trackCov.get(k), mv.measurements.get(k-1), 
-                        swimmer);
-                if(k>1)
-                   this.filter(k - 1, swimmer, -1);
+                if (sv.trackCov.get(k) == null || mv.measurements.get(k - 1) == null) {return;}
+                sv.transport(k, k - 1, sv.trackTraj.get(k), sv.trackCov.get(k), mv.measurements.get(k-1), swimmer);
+                if(k>1) this.filter(k - 1, swimmer, -1);
             }
 
             // chi2
@@ -141,7 +133,7 @@ public class KFitter {
                 this.setTrajectory();
                 setFitFailed = false;
             } else {
-                this.chi2 =newchisq ;
+                this.chi2 = newchisq;
                 break;
             }
         }
@@ -262,6 +254,9 @@ public class KFitter {
                     K[2] = 0;
                 //}
             }
+
+            StateVec iVec = sv.trackTraj.get(k);
+
             double drho_filt = sv.trackTraj.get(k).d_rho;
             double phi0_filt = sv.trackTraj.get(k).phi0;
             double kappa_filt = sv.trackTraj.get(k).kappa;
@@ -283,8 +278,8 @@ public class KFitter {
             fVec.dz = dz_filt;
             fVec.tanL = tanL_filt;
             fVec.alpha = sv.trackTraj.get(k).alpha;
-            sv.setStateVecPosAtMeasSite(k, fVec, mv.measurements.get(k), swimmer); 
-            
+            sv.setStateVecPosAtMeasSite(k, fVec, mv.measurements.get(k), swimmer);
+
             double dh_filt = mv.dh(k, fVec);  
             if (Math.abs(dh_filt) < Math.abs(dh) 
                     && Math.abs(dh_filt)/Math.sqrt(V)<this.getResiCut()) { 
@@ -301,7 +296,101 @@ public class KFitter {
                 this.NDF--;
                 mv.measurements.get(k).skip = true;
             }
+
+            // The position of iVec (before propagation)
+            double x_start = iVec.d_rho * Math.cos(iVec.phi0);
+            double y_start = iVec.d_rho * Math.sin(iVec.phi0);
+            double z_start = iVec.dz;
+
+            // The postion of fVec (after propagation)
+            double x_end = fVec.d_rho * Math.cos(fVec.phi0);
+            double y_end = fVec.d_rho * Math.sin(fVec.phi0);
+            double z_end = fVec.dz;
+
+            System.out.println("Start : X = " + x_start + " Y = "+ y_start + " Z = " + z_start);
+            System.out.println("End : X = " + x_end + " Y = "+ y_end + " Z = " + z_end);
+
+            // Compute the path of the helix between start and end (TODO : use helix path instead of basic distance)
+            double distance = Math.sqrt((x_end-x_start)*(x_end-x_start)+(y_end-y_start)*(y_end-y_start)+(z_end-z_start)*(z_end-z_start)); // mm
+            distance /= 1000; // m
+
+            System.out.println("distance = " + distance);
+
+            double pt = Math.abs(1. / iVec.kappa);
+            double pz = pt * iVec.tanL;
+            double p = Math.sqrt(pt * pt + pz * pz); // GeV
+            double mass = 0.98; // proton
+            double c = 0.000299792458;
+            double beta = p / Math.sqrt(p * p + mass * mass); // particle momentum
+            double m_e = 0.000510; // GeV
+            double r_e = 2.8179; // fm
+            double N_A = 6.022*1e23;
+            double K_ = 4*Math.PI*N_A*r_e*r_e*m_e*c*c;
+            double z = 1; // charge number of the proton
+            double gamma = 1/(Math.sqrt(1-beta*beta));
+            double W_max = (2*m_e*c*c*beta*beta*gamma*gamma)/(1 + 2*gamma*m_e/mass + (m_e/mass)*(m_e/mass));
+            double X = Math.log(beta*gamma);
+            // For Helium :
+            double X0 = 2.202; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
+            double X1 = 4.0; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
+            double a = 0.0114; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
+            double m = 7.625; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
+            double C = 11.139; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
+            double Z = 2; // atomic number of helium
+            double I = 10*Z; // eV
+            double A = 4.002602; // g/mol
+            double deltaX = 0;
+            if(X>X0 && X<X1) {deltaX = 4.6052*X + a*Math.pow((X1-X),m) + C;}
+            else if(X>X1) {deltaX = 4.6052*X + C;}
+            double deltaE = K_*z*z*Z/A*1/(beta*beta)*(0.5*Math.log((2*m_e*c*c*beta*beta*gamma*gamma*W_max)/(I*I)) - beta*beta - deltaX/2)*distance;
+
+            // For Carbon :
+
+            double B = 1/(sv.trackTraj.get(k).alpha*c);
+
+            double E = Math.sqrt(Math.pow(p*c,2) + Math.pow(mass*c*c,2));
+            double correctedE = E + deltaE;
+            double correctedp = Math.sqrt(correctedE*correctedE - (mass*c*c)*(mass*c*c))/c;
+            double correctedR = correctedp/(0.3*B);
+
+            System.out.println("deltaE = " + deltaE);
+            System.out.println("E = " + E);
+            System.out.println("correctedE = " + correctedE);
+            System.out.println("correctedp = " + correctedp);
+            System.out.println("correctedR = " + correctedR);
+
+            sv.trackTraj.get(k).kappa = 1/correctedR;
+
+
+
         }
+
+        /*
+        double pt = Math.abs(1. / sv.trackTraj.get(k).kappa);
+        double pz = pt * sv.trackTraj.get(k).tanL;
+        double p = Math.sqrt(pt * pt + pz * pz); // GeV
+        double mass = 0.98; // proton
+        double c = 0.000299792458;
+
+        double B = 1/(sv.trackTraj.get(k).alpha*c);
+
+        double deltaE = sv.trackTraj.get(k).get_ELoss();
+
+        double E = Math.sqrt(Math.pow(p*c,2) + Math.pow(mass*c*c,2));
+        double correctedE = E + deltaE;
+        double correctedp = Math.sqrt(correctedE*correctedE - (mass*c*c)*(mass*c*c))/c;
+        double correctedR = correctedp/(0.3*B);
+
+        System.out.println("deltaE = " + deltaE);
+        System.out.println("E = " + E);
+        System.out.println("correctedE = " + correctedE);
+        System.out.println("correctedp = " + correctedp);
+        System.out.println("correctedR = " + correctedR);
+
+        sv.trackTraj.get(k).kappa = 1/correctedR;
+
+    */
+
     }
 
     /**
@@ -360,12 +449,8 @@ public class KFitter {
     }
 
     private boolean isNonsingular(Matrix mat) {
-        double matDet = mat.det(); 
-        if (Math.abs(matDet) < 1.e-30) {
-            return false;
-        } else {
-            return true;
-        }
+        double matDet = mat.det();
+        return !(Math.abs(matDet) < 1.e-30);
         /*
 	      for (int j = 0; j < mat.getColumnDimension(); j++) {
 	        // if (Math.abs(mat.get(j, j)) < 0.00000000001) {

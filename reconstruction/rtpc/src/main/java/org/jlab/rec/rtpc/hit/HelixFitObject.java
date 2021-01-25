@@ -21,12 +21,51 @@ public class HelixFitObject {
     private double _DCA;
     private double _Chi2;
     private double _magfield;
+
+    public double get_Omega() {
+        return _Omega;
+    }
+
+    public void set_Omega(double _Omega) {
+        this._Omega = _Omega;
+    }
+
+    public double get_TanL() {
+        return _TanL;
+    }
+
+    public void set_TanL(double _TanL) {
+        this._TanL = _TanL;
+    }
+
+    public double get_Phi0() {
+        return _Phi0;
+    }
+
+    public void set_Phi0(double _Phi0) {
+        this._Phi0 = _Phi0;
+    }
+
+    public double get_D0() {
+        return _D0;
+    }
+
+    public void set_D0(double _D0) {
+        this._D0 = _D0;
+    }
+
+    private double _Omega;
+    private double _TanL;
+    private double _Phi0;
+    private double _D0;
+
     
     public HelixFitObject(){
         //default constructor
     }
     
-    public HelixFitObject(double Rho, double A, double B, double Phi, double Theta, double X0, double Y0, double Z0, double DCA, double Chi2){
+    public HelixFitObject(double Rho, double A, double B, double Phi, double Theta, double X0, double Y0, double Z0, double DCA, double Chi2,
+                          double omega, double tanL, double phi0, double d0){
         _Rho = Rho;
         _A = A;
         _B = B;
@@ -38,6 +77,11 @@ public class HelixFitObject {
         _DCA = DCA;
         _Chi2 = Chi2;
         _magfield = 50;
+        _Omega = omega;
+        _TanL = tanL;
+        _Phi0 = phi0;
+        _D0 = d0;
+
     }
     public double get_Rho(){
         return _Rho;

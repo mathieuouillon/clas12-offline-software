@@ -9,6 +9,10 @@ import org.jlab.rec.rtpc.hit.FinalTrackInfo;
 import org.jlab.rec.rtpc.hit.HitParameters;
 import org.jlab.rec.rtpc.hit.RecoHitVector;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
 
@@ -22,96 +26,113 @@ public class KalmanFilter {
         this.init(params);
     }
 
-    /**
-     * Transform global fit parameters R, A, B, Z_0 and Theta into state vector parameters d_rho, phi_0,
-     * kappa, d_z, tanL
-     * @param params
-     */
     private void init(HitParameters params) {
-        HashMap<Integer, FinalTrackInfo> finaltrackinfomap = params.get_finaltrackinfomap();
-        HashMap<Integer, List<RecoHitVector>> recotrackmap = params.get_recotrackmap();
-        for (int TID : recotrackmap.keySet()) {
-            double xc = finaltrackinfomap.get(TID).get_A(); // x coordinates of the center of helix
-            double yc = finaltrackinfomap.get(TID).get_B(); // y coordinates of the center of helix
-            double x = recotrackmap.get(TID).get(0).x(); // x coordinates of the first hit of track
-            double y = recotrackmap.get(TID).get(0).y(); // y coordinates of the first hit of track
-            double d_rho = Math.abs(Math.sqrt((x - xc)*(x - xc) + (y - yc)*(y - yc)) - finaltrackinfomap.get(TID).get_R());
-            double m1 = (y- yc)/(x - xc);
-            double m2 = 0; // = (yc - yc)/(xc + 1 -xc)
-            double phi_0 = Math.abs(Math.atan((m1-m2)/(1+m1*m2))); // Angle between two lines based on slope
-            double kappa = 1 / finaltrackinfomap.get(TID).get_R();
-            double d_z = finaltrackinfomap.get(TID).get_vz();
-            double tanL = Math.tan(-Math.toRadians(finaltrackinfomap.get(TID).get_theta()) + Math.PI / 2);
 
-            // System.out.println("d_rho = " + d_rho + " phi_0 = " + phi_0 + " kappa = " + kappa + " d_z = " + d_z + " tanL = " + tanL);
-
-            Matrix cov = new Matrix(5, 5, 0.0);
-            cov.set(0, 0, d_rho * d_rho);
-            cov.set(1, 0, phi_0 * d_rho);
-            cov.set(2, 0, kappa * d_rho);
-            cov.set(0, 1, d_rho * phi_0);
-            cov.set(0, 2, d_rho * kappa);
-            cov.set(1, 1, phi_0 * phi_0);
-            cov.set(1, 2, phi_0 * kappa);
-            cov.set(2, 1, phi_0 * kappa);
-            cov.set(2, 2, kappa * kappa);
-            cov.set(3, 3, d_z * d_z);
-            cov.set(3, 4, d_z * tanL);
-            cov.set(4, 3, d_z * tanL);
-            cov.set(4, 4, tanL * tanL);
-
-            finaltrackinfomap.get(TID).set_d_rho(d_rho);
-            finaltrackinfomap.get(TID).set_phi_0(phi_0);
-            finaltrackinfomap.get(TID).set_kappa(kappa);
-            finaltrackinfomap.get(TID).set_d_z(d_z);
-            finaltrackinfomap.get(TID).set_tanL(tanL);
-            finaltrackinfomap.get(TID).set_cov(cov);
-
-        }
     }
 
     public void process(HitParameters params, DataEvent event){
         Swim swimmer = new Swim();
-        org.jlab.clas.tracking.kalmanfilter.helical.KFitter kf = null;
         HashMap<Integer, FinalTrackInfo> finaltrackinfomap = params.get_finaltrackinfomap();
         HashMap<Integer, List<RecoHitVector>> recotrackmap = params.get_recotrackmap();
 
-        for (int TID : recotrackmap.keySet()) {
+        for (int TID : finaltrackinfomap.keySet()) {
 
-            double xr = finaltrackinfomap.get(TID).get_d_rho() * Math.sin(finaltrackinfomap.get(TID).get_phi_0());
-            double yr = finaltrackinfomap.get(TID).get_d_rho() * Math.cos(finaltrackinfomap.get(TID).get_phi_0());
-            double zr = finaltrackinfomap.get(TID).get_d_z();
-            double pt = Constants.LIGHTVEL * 1 / finaltrackinfomap.get(TID).get_kappa() * Constants.getSolenoidVal();
-            double pz = pt * finaltrackinfomap.get(TID).get_tanL();
-            double px = pt * Math.cos(finaltrackinfomap.get(TID).get_phi_0());
-            double py = pt * Math.sin(finaltrackinfomap.get(TID).get_phi_0());
+            double B = 5.0;
 
-            int charge = (int) (Math.signum(Constants.getSolenoidscale()) * Constants.CHARGE);
+            double x = finaltrackinfomap.get(TID).get_X0();
+            double y = finaltrackinfomap.get(TID).get_Y0();
+            double z = finaltrackinfomap.get(TID).get_Z0();
+            double px =  finaltrackinfomap.get(TID).get_px()/1000;
+            double py =  finaltrackinfomap.get(TID).get_py()/1000;
+            double pz =  finaltrackinfomap.get(TID).get_pz()/1000;
+            int q = 1;
 
-            xr += Constants.Xb;
-            yr += Constants.Yb;
+            Helix hlx = new Helix(x, y, z, px, py, pz, q, B, Constants.Xb, Constants.Yb, Helix.Units.MM);
 
-            Helix hlx = new Helix(xr, yr, zr, px, py, pz, charge, Constants.getSolenoidVal(), Constants.Xb, Constants.Yb, Helix.Units.MM);
+            double omega = hlx.getOmega();
+            double tanL = hlx.getTanL();
+            double phi0 = hlx.getPhi0();
+            double d0 = hlx.getD0();
+            double z0 = hlx.getZ0();
 
+            Matrix cov = new Matrix(5, 5);
+            cov.set(0, 0, d0 * d0);
+            cov.set(1, 0, phi0 * d0);
+            cov.set(0, 1, d0 * phi0);
+            cov.set(2, 0, omega * d0);
+            cov.set(0, 2, d0 * omega);
+            cov.set(1, 1, phi0 * phi0);
+            cov.set(1, 2, phi0 * omega);
+            cov.set(2, 1, phi0 * omega);
+            cov.set(2, 2, omega * omega);
+            cov.set(3, 3, z0 * z0);
+            cov.set(4, 4, tanL * tanL);
 
-            kf = new org.jlab.clas.tracking.kalmanfilter.helical.KFitter(hlx, finaltrackinfomap.get(TID).get_cov(),
-                    event, swimmer, Constants.Xb, Constants.Yb, Constants.Zoffset,
-                    recUtil.setMeasVecs(recotrackmap.get(TID)));
+            org.jlab.clas.tracking.kalmanfilter.helical.KFitter kf = new org.jlab.clas.tracking.kalmanfilter.helical.KFitter(hlx, cov,
+                    event, swimmer, Constants.Xb, Constants.Yb, Constants.Zoffset, recUtil.setMeasVecs(recotrackmap.get(TID)));
+
             kf.runFitter(swimmer);
 
             finaltrackinfomap.get(TID).setKFHelix(kf.KFHelix);
 
-/*
-            System.out.println("pt : " + pt);
-            System.out.println("pt hlx : " + Math.sqrt(finaltrackinfomap.get(TID).get_px()/1000*finaltrackinfomap.get(TID).get_px()/1000 + finaltrackinfomap.get(TID).get_py()/1000*finaltrackinfomap.get(TID).get_py()/1000));
-            System.out.println("pt kf : " + kf.KFHelix.getPx()*kf.KFHelix.getPx() + kf.KFHelix.getPy()*kf.KFHelix.getPy());
+            /*double px_gf = finaltrackinfomap.get(TID).get_px()/1000;
+            double py_gf = finaltrackinfomap.get(TID).get_py()/1000;
+            double pz_gf = finaltrackinfomap.get(TID).get_pz()/1000;
 
-            System.out.println("p : " + Math.sqrt(px*px + py*py + pz*pz));
-            System.out.println("p hlx : " + Math.sqrt(finaltrackinfomap.get(TID).get_px()/1000*finaltrackinfomap.get(TID).get_px()/1000 + finaltrackinfomap.get(TID).get_py()/1000*finaltrackinfomap.get(TID).get_py()/1000
-                    + finaltrackinfomap.get(TID).get_py()/1000*finaltrackinfomap.get(TID).get_py()/1000));
-            System.out.println("p kf : " + kf.KFHelix.getPx()*kf.KFHelix.getPx() + kf.KFHelix.getPy()*kf.KFHelix.getPy() +kf.KFHelix.getPz()*kf.KFHelix.getPz());
-*/
+            System.out.println(" Global fit : px = " + px_gf + " py = " + py_gf + " pz = " + pz_gf);
 
+            double px_kf = kf.KFHelix.getPx();
+            double py_kf = kf.KFHelix.getPy();
+            double pz_kf = kf.KFHelix.getPz();
+
+            System.out.println(" Kalman fit : px = " + px_kf + " py = " + py_kf + " pz = " + pz_kf);*/
+
+            try {
+                BufferedWriter writer = new BufferedWriter(new FileWriter("filename.txt", true));
+                double px_gf = finaltrackinfomap.get(TID).get_px()/1000;
+                double py_gf = finaltrackinfomap.get(TID).get_py()/1000;
+                double pz_gf = finaltrackinfomap.get(TID).get_pz()/1000;
+                writer.write("p global = " + Math.sqrt(px_gf*px_gf + py_gf*py_gf + pz_gf*pz_gf) + '\n');
+                writer.write("mom global = " + 0.3*50*Math.abs(finaltrackinfomap.get(TID).get_R())/(10*Math.sin(Math.toRadians(finaltrackinfomap.get(TID).get_theta())))/1000 + '\n');
+                double px_kf = kf.KFHelix.getPx();
+                double py_kf = kf.KFHelix.getPy();
+                double pz_kf = kf.KFHelix.getPz();
+                double Theta = Math.PI/2.-Math.atan(kf.KFHelix.getTanL());
+                double Phi = kf.KFHelix.getPhi0();
+                if(Phi> Math.PI) Phi-=2*Math.PI;
+                if(Phi<-Math.PI) Phi+=2*Math.PI;
+                writer.write("p kf = " + Math.sqrt(px_kf*px_kf + py_kf*py_kf + pz_kf*pz_kf) + '\n');
+                double mom = 0.000299792458*5.0*1/(kf.KFHelix.getOmega());
+                writer.write("mom = " + mom + '\n');
+                writer.write("theta global = " + finaltrackinfomap.get(TID).get_theta() + '\n');
+                Theta = Math.toDegrees(Theta);
+                writer.write("theta kf = " + Theta + '\n');
+                writer.write("phi global = " + finaltrackinfomap.get(TID).get_phi() + '\n');
+                double Phi_deg=Math.toDegrees(Phi);
+                if(Phi_deg >= 180) Phi_deg -= 360;
+                if(Phi_deg < -180) Phi_deg += 360;
+                writer.write("phi kf = " + Phi_deg + '\n');
+                double omega_kf = kf.KFHelix.getOmega();
+                writer.write("omega global = " + omega + '\n');
+                writer.write("omega kf = " + omega_kf + '\n');
+                double z_kf = kf.KFHelix.getZ();;
+                double z_gf = hlx.getZ();
+                writer.write("z global = " + z_gf + '\n');
+                writer.write("z kf = " + z_kf + '\n');
+                writer.write('\n');
+                writer.close();
+            } catch (IOException e) {
+                System.out.println("An error occurred.");
+                e.printStackTrace();
+            }
         }
+    }
+
+    public void printMatrix(Matrix C) {
+        System.out.println("    ");
+        for (int k = 0; k < 5; k++) {
+            System.out.println(C.get(k, 0)+"\t"+C.get(k, 1)+"\t"+C.get(k, 2)+"\t"+C.get(k, 3)+"\t"+C.get(k, 4));
+        }
+        System.out.println("    ");
     }
 }

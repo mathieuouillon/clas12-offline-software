@@ -91,6 +91,10 @@ public class HelixFitTest {
         double chi2phiterm = 0;
         double chi2zterm = 0;
         double chi2term = 0;
+        double omega = ho.get_Omega();
+        double tanL = ho.get_TanL();
+        double phi0 = ho.get_Phi0();
+        double d0 = ho.get_D0();
         boolean removehits = false;
         List<Integer> hitstoremove = new ArrayList<>();
         //calculate chi2
@@ -129,7 +133,7 @@ public class HelixFitTest {
         if(tl != 0 && !Double.isNaN(tl)) dEdx = ADCsum/tl;
         if(TID != 0 && numhits > minhitcount){
             newrecotrackmap.put(TID, track);
-            finaltrackinfomap.put(TID, new FinalTrackInfo(px,py,pz,vz,theta,phi,numhits,tl,ADCsum,dEdx,ho.get_Rho(),A,B,chi2, x0, y0, z0));
+            finaltrackinfomap.put(TID, new FinalTrackInfo(px,py,pz,vz,theta,phi,numhits,tl,ADCsum,dEdx,ho.get_Rho(),A,B,chi2, x0, y0, z0, omega, tanL, phi0, d0));
         }
 
     }

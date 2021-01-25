@@ -99,12 +99,12 @@ public class RecoBankWriter {
             bank.setFloat("x_helix", row, (float) track.get_A());
             bank.setFloat("y_helix", row, (float) track.get_B());
             bank.setFloat("chi2_helix", row, (float) track.get_chi2());
-            bank.setFloat("min_row", row, (float) smallpad.row());
+            bank.setFloat("min_row", row, (float) track.getKFHelix().getPx());
             bank.setFloat("min_col", row, (float) smallpad.col());
             bank.setFloat("max_row", row, (float) largepad.row());
             bank.setFloat("max_col", row, (float) largepad.col());
             bank.setFloat("min_time", row, (float) hitvec.smallhit().time());
-            bank.setFloat("max_time", row, (float) (Math.toDegrees(Math.PI/2.-Math.atan(track.getKFHelix().getTanL()))));
+            bank.setFloat("max_time", row, (float) Math.toDegrees(Math.PI/2.-Math.atan(track.getKFHelix().getTanL())));
             bank.setFloat("min_radius", row, (float) Math.toDegrees(track.getKFHelix().getPhi0()));
             bank.setFloat("max_radius", row, (float) track.getKFHelix().getPx());
             bank.setFloat("min_phi", row, (float) track.getKFHelix().getPy());

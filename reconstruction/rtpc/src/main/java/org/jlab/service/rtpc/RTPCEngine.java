@@ -74,75 +74,86 @@ public class RTPCEngine extends ReconstructionEngine{
         return true;
     }
 
-    int i = 0;
+    int turn = 0;
 
     @Override
     public boolean processDataEvent(DataEvent event) {
 
-        HitParameters params = new HitParameters();
+        /*
+        Command to run the process : ./recon-util org.jlab.service.rtpc.RTPCEngine org.jlab.clas.swimtools.MagFieldsEngine
+        -i input.hipo -o output.hipo
+         */
 
-        HitReader hitRead = new HitReader();
-        hitRead.fetch_RTPCHits(event,simulation,cosmic);//boolean is for simulation
+        int[] pid_table = event.getBank("REC::Particle").getInt("pid");
 
-        List<Hit> hits = new ArrayList<>();
+        for(int i = 0; i < pid_table.length; i++) {
+            int pid = event.getBank("REC::Particle").getInt("pid", i);
 
-        hits = hitRead.get_RTPCHits();
+            if (pid == 2212) {
 
-        if(hits==null || hits.size()==0) {
-            return true;
-        }
+                HitParameters params = new HitParameters();
 
-        int runNo = 10;
-        double magfield = 50.0;
-        double magfieldfactor = 1;
+                HitReader hitRead = new HitReader();
+                hitRead.fetch_RTPCHits(event, simulation, cosmic);//boolean is for simulation
 
-        if(event.hasBank("RUN::config")){
-            DataBank bank = event.getBank("RUN::config");
-            runNo = bank.getInt("run", 0);
-            magfieldfactor = bank.getFloat("solenoid",0);
-            if (runNo<=0) {
-                System.err.println("RTPCEngine:  got run <= 0 in RUN::config, skipping event.");
-                return false;
+                List<Hit> hits = new ArrayList<>();
+
+                hits = hitRead.get_RTPCHits();
+
+                if (hits == null || hits.size() == 0) {
+                    return true;
+                }
+
+                int runNo = 10;
+                double magfield = 50.0;
+                double magfieldfactor = 1;
+
+                if (event.hasBank("RUN::config")) {
+                    DataBank bank = event.getBank("RUN::config");
+                    runNo = bank.getInt("run", 0);
+                    magfieldfactor = bank.getFloat("solenoid", 0);
+                    if (runNo <= 0) {
+                        System.err.println("RTPCEngine:  got run <= 0 in RUN::config, skipping event.");
+                        return false;
+                    }
+                }
+
+                magfield = 50 * magfieldfactor;
+
+                if (event.hasBank("RTPC::adc")) {
+
+                    params.init(this.getConstantsManager(), runNo);
+
+                    SignalSimulation SS = new SignalSimulation(hits, params, simulation); //boolean is for simulation
+
+                    //Sort Hits into Tracks at the Readout Pads
+                    TrackFinder TF = new TrackFinder(params, cosmic);
+                    //Calculate Average Time of Hit Signals
+                    TimeAverage TA = new TimeAverage(this.getConstantsManager(), params, runNo);
+                    //Disentangle Crossed Tracks
+                    TrackDisentangler TD = new TrackDisentangler(params, disentangle);
+                    //Reconstruct Hits in Drift Region
+                    TrackHitReco TR = new TrackHitReco(params, hits, cosmic, magfield);
+                    //Helix Fit Tracks to calculate Track Parameters
+                    HelixFitTest HF = new HelixFitTest(params, fitToBeamline, Math.abs(magfield), cosmic);
+
+                    KalmanFilter kf = new KalmanFilter(params);
+                    kf.process(params, event);
+
+                    RecoBankWriter writer = new RecoBankWriter();
+                    DataBank recoBank = writer.fillRTPCHitsBank(event, params);
+                    DataBank trackBank = writer.fillRTPCTrackBank(event, params);
+
+                    event.appendBank(recoBank);
+                    event.appendBank(trackBank);
+                }
+                else {
+                    return true;
+                }
+                return true;
             }
         }
-
-        magfield = 50 * magfieldfactor;
-
-
-        if(event.hasBank("RTPC::adc") && i < 2000){
-
-            params.init(this.getConstantsManager(), runNo);
-
-            SignalSimulation SS = new SignalSimulation(hits,params,simulation); //boolean is for simulation
-
-            //Sort Hits into Tracks at the Readout Pads
-            TrackFinder TF = new TrackFinder(params,cosmic);
-            //Calculate Average Time of Hit Signals
-            TimeAverage TA = new TimeAverage(this.getConstantsManager(),params,runNo);
-            //Disentangle Crossed Tracks
-            TrackDisentangler TD = new TrackDisentangler(params,disentangle);
-            //Reconstruct Hits in Drift Region
-            TrackHitReco TR = new TrackHitReco(params,hits,cosmic,magfield);
-            //Helix Fit Tracks to calculate Track Parameters
-            HelixFitTest HF = new HelixFitTest(params,fitToBeamline,Math.abs(magfield),cosmic);
-
-            KalmanFilter kf = new KalmanFilter(params);
-            kf.process(params, event);
-
-            RecoBankWriter writer = new RecoBankWriter();
-            DataBank recoBank = writer.fillRTPCHitsBank(event,params);
-            DataBank trackBank = writer.fillRTPCTrackBank(event,params);
-
-            event.appendBank(recoBank);
-            event.appendBank(trackBank);
-        }
-        else{
-            return true;
-        }
-
-        i++;
-
-        return true;
+    return true;
     }
 
     public static void main(String[] args){
