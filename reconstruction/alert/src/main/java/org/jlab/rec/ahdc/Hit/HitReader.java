@@ -59,6 +59,7 @@ public class HitReader {
         float[] x_true = new float[rows];
         float[] y_true = new float[rows];
         float[] z_true = new float[rows];
+        float[] trackE = new float[rows];
 
         if(event.hasBank("MC::True")){
             for (int i = 0; i < rows; i++) {
@@ -66,7 +67,8 @@ public class HitReader {
                 x_true[i] = bankSIMU.getFloat("avgX",i);
                 y_true[i] = bankSIMU.getFloat("avgY",i);
                 z_true[i] = bankSIMU.getFloat("avgZ",i);
-                TrueHit truehit = new TrueHit(pid[i], x_true[i],y_true[i],z_true[i]);
+                trackE[i] = bankSIMU.getFloat("trackE", i);
+                TrueHit truehit = new TrueHit(pid[i], x_true[i], y_true[i], z_true[i], trackE[i]);
                 truehits.add(truehit);
             }
         }

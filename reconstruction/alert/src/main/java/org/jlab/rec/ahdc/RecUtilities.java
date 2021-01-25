@@ -23,11 +23,8 @@ import java.util.List;
  *
  */
 public class RecUtilities {
-
-
-    /* For real data
+    // For real data
     public List<Surface> setMeasVecs(List<Hit> AHDC_Hits) {
-
         List<Surface> KFSites = new ArrayList<Surface>();
         int id = 0;
         for(Hit hit : AHDC_Hits){
@@ -38,7 +35,7 @@ public class RecUtilities {
             double x_end = hit.get_Radius() * Math.sin(hit.get_Phi()+Math.toRadians(20));
             double y_end = hit.get_Radius() * Math.cos(hit.get_Phi()+Math.toRadians(20));
             Point3D origin = new Point3D(x_start,y_start,z_start);
-            Point3D center = new Point3D(0,0,0);
+            Point3D center = new Point3D(0,0,z_start);
             Vector3D normal = new Vector3D(0,0,1);
             double theta = 2*Math.PI;
             Arc3D arc = new Arc3D(origin,center,normal,theta);
@@ -46,24 +43,25 @@ public class RecUtilities {
             Cylindrical3D cyl = new Cylindrical3D(arc,height);
             Strip strip = new Strip(id,0,x_start,y_start,z_start,x_end,y_end,z_end);
             Surface meas = new Surface(cyl,strip);
-            meas.setLayer(0);
+            meas.setLayer(id);
             meas.setError(0);
             meas.setSector(0);
             KFSites.add(meas);
+            id++;
         }
         return KFSites;
-    }*/
+    }
 
 
     //For simulated data
-    public List<Surface> setMeasVecs(List<TrueHit> AHDC_Hits) {
+    public List<Surface> setMeasVecsGeant4(List<TrueHit> AHDC_Hits) {
 
         List<Surface> KFSites = new ArrayList<Surface>();
         int id = 0;
         for (TrueHit hit : AHDC_Hits) {
             if (hit.get_Pid() == 2212) {
                 Point3D origin = new Point3D(hit.get_X(), hit.get_Y(), hit.get_Z());
-                Point3D center = new Point3D(0, 0, 0);
+                Point3D center = new Point3D(0, 0, hit.get_Z());
                 Vector3D normal = new Vector3D(0, 0, 1);
                 double theta = 2 * Math.PI;
                 Arc3D arc = new Arc3D(origin, center, normal, theta);

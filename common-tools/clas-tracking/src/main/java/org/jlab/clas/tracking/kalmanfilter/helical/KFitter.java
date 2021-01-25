@@ -1,20 +1,20 @@
 package org.jlab.clas.tracking.kalmanfilter.helical;
 
-import java.lang.reflect.Array;
 import java.util.*;
 
 import Jama.Matrix;
 
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.MatrixUtils;
+import org.apache.commons.math3.linear.RealMatrix;
 import org.jlab.geom.prim.Point3D;
-import org.jlab.geom.prim.Vector3D;
-import org.jlab.io.base.DataEvent;
 import org.jlab.clas.swimtools.Swim;
 import org.jlab.clas.tracking.kalmanfilter.Surface;
 import org.jlab.clas.tracking.kalmanfilter.helical.StateVecs.StateVec;
 import org.jlab.clas.tracking.trackrep.Helix;
 
 public class KFitter {
-    
+
     public static int polarity = 1;
     public boolean setFitFailed = true;
     StateVecs sv = new StateVecs();
@@ -23,39 +23,55 @@ public class KFitter {
     private double _tarShift; //targetshift
     private double _Xb; //beam axis pars
     private double _Yb;
-    private double resiCut = 100;//residual cut for the measurements
+    private double resiCut = 100; // residual cut for the measurements
     public int totNumIter = 1; // Number of iteration of the Kalman Filter
-    public Map<Integer, HitOnTrack> TrjPoints = new HashMap<Integer, HitOnTrack>();
+    public Map<Integer, HitOnTrack> TrjPoints = new HashMap<>();
     public Helix KFHelix;
     public double chi2 = 0;
     public int NDF = 0;
+    public double TotalEnergyLoss = 0;
+    public double NIST_TotalEnergyLoss = 0;
 
 
     /**
+     * A extended Kalman filter using as state vector a=(d_rho, phi_0, omega, z0, tanL)^T as define in
+     * this paper : https://www-jlc.kek.jp/subg/offl/kaltest/doc/ReferenceManual.pdf.
+     * Use a 4th order Runge-Kutta algorithm for extrapolate x,y,z between each measSurface.
      *
-     * @param helix Helix given by global fit for starting the Kalman Filter.
-     * @param cov Covariance matrix define by :
-     *            | d0*d0          phi0 * d0      omega * d0        0         0      |
-     *            | phi0 * d0      phi0 * phi0    phi0 * omega      0         0      |
-     *            | omega * d0     phi0 * omega   omega * omega     0         0      |
-     *            |    0                0               0        z0 * z0      0      |
-     *            |    0                0               0           0    tanL * tanL |
-     * @param event
-     * @param swimmer
-     * @param Xb X component of beam axis
-     * @param Yb Y component of beam axis
-     * @param Zref
+     * @param helix        Helix given by global fit for starting the Kalman Filter.
+     * @param cov          Covariance matrix define as :
+     *                     | d0*d0          phi0 * d0      omega * d0        0         0      |
+     *                     | phi0 * d0      phi0 * phi0    phi0 * omega      0         0      |
+     *                     | omega * d0     phi0 * omega   omega * omega     0         0      |
+     *                     |    0                0               0        z0 * z0      0      |
+     *                     |    0                0               0           0    tanL * tanL |
+     * @param swimmer      Propagate a charged particle into a magnetic field by using Runge-Kutta 4th differential equation solver
+     * @param Xb           X component of beam axis in mm
+     * @param Yb           Y component of beam axis in mm
+     * @param Zref         Target shift in mm
      * @param measSurfaces Surfaces define for each measurement (here a cylinder and a strip(line))
      */
-    public KFitter(Helix helix, Matrix cov, DataEvent event, Swim swimmer, double Xb, double Yb,
+    public KFitter(Helix helix, Matrix cov, Swim swimmer, double Xb, double Yb,
                    double Zref, List<Surface> measSurfaces) {
         _Xb = Xb;
         _Yb = Yb;
         _tarShift = Zref;
-        this.init(helix, cov, event, swimmer, Xb, Yb, Zref, mv, measSurfaces);
+        this.init(helix, cov, swimmer, Xb, Yb, Zref, mv, measSurfaces);
     }
 
-    public void init(Helix helix, Matrix cov, DataEvent event, Swim swimmer,
+    /**
+     * Initialise the Kalman filter by using the helix and the covariance matrix
+     *
+     * @param helix        Helix define in org.jlab.clas.tracking.trackrep.Helix;
+     * @param cov          Covariance matrix define in the constructor come from the global fit
+     * @param swimmer      Propagate a charged particle into a magnetic field by using Runge-Kutta 4th differential equation solver
+     * @param Xb           X component of beam axis in mm
+     * @param Yb           Y component of beam axis in mm
+     * @param Zref         Target shift in mm
+     * @param mv           Measurement vector list
+     * @param measSurfaces Surfaces define for each measurement (here a cylinder and a strip(line))
+     */
+    public void init(Helix helix, Matrix cov, Swim swimmer,
                      double Xb, double Yb, double Zref, MeasVecs mv,
                      List<Surface> measSurfaces) {
 
@@ -65,17 +81,17 @@ public class KFitter {
         if (sv.X0 != null) {
             sv.X0.clear();
         } else {
-            sv.X0 = new ArrayList<Double>();
+            sv.X0 = new ArrayList<>();
         }
         if (sv.Y0 != null) {
             sv.Y0.clear();
         } else {
-            sv.Y0 = new ArrayList<Double>();
+            sv.Y0 = new ArrayList<>();
         }
         if (sv.Z0 != null) {
             sv.Z0.clear();
         } else {
-            sv.Z0 = new ArrayList<Double>();
+            sv.Z0 = new ArrayList<>();
         }
 
         sv.X0.add(Xb);
@@ -88,170 +104,134 @@ public class KFitter {
             sv.Z0.add(0.0);
         }
 
-        sv.init(helix, cov, this, swimmer);
+        sv.init(helix, cov, swimmer);
         this.NDF = mv.measurements.size() - 6;
     }
-                            
+
+    /**
+     * Run the Kalman filter with @totNumIter the number of iteration of the Kalman Filter.
+     * We take the one with the best chi square
+     *
+     * @param swimmer Propagate a charged particle into a magnetic field by using Runge-Kutta 4th differential equation solver
+     * TODO : change filter when direction is -1 to be a smoother cf paper in the constructor
+     */
     public void runFitter(Swim swimmer) {
         double newchisq = Double.POSITIVE_INFINITY;
-        this.NDF = sv.X0.size()-5; 
-        
+        this.NDF = sv.X0.size() - 5;
+
         for (int it = 0; it < totNumIter; it++) {
             this.chi2 = 0;
             for (int k = 0; k < sv.X0.size() - 1; k++) {
-                if (sv.trackCov.get(k) == null || mv.measurements.get(k + 1) == null) {return;}
-                sv.transport(k, k + 1, sv.trackTraj.get(k), sv.trackCov.get(k), mv.measurements.get(k+1), swimmer);
+                if (sv.trackCov.get(k) == null || mv.measurements.get(k + 1) == null) {
+                    return;
+                }
+                sv.transport(k, k + 1, sv.trackTraj.get(k), sv.trackCov.get(k), mv.measurements.get(k + 1), swimmer, 1);
+                TotalEnergyLoss += sv.trackTraj.get(k).Eloss;
+                NIST_TotalEnergyLoss += sv.trackTraj.get(k).NIST_Eloss;
                 this.filter(k + 1, swimmer, 1);
             }
-            
-            for (int k =  sv.X0.size() - 1; k>0 ;k--) {
-                if (sv.trackCov.get(k) == null || mv.measurements.get(k - 1) == null) {return;}
-                sv.transport(k, k - 1, sv.trackTraj.get(k), sv.trackCov.get(k), mv.measurements.get(k-1), swimmer);
-                if(k>1) this.filter(k - 1, swimmer, -1);
+
+            for (int k = sv.X0.size() - 1; k > 0; k--) {
+                if (sv.trackCov.get(k) == null || mv.measurements.get(k - 1) == null) {
+                    return;
+                }
+                sv.transport(k, k - 1, sv.trackTraj.get(k), sv.trackCov.get(k), mv.measurements.get(k - 1), swimmer, -1);
+                if (k > 1) this.filter(k - 1, swimmer, -1);
             }
 
-            this.chi2=this.calc_chi2(swimmer);
-            if(this.chi2<newchisq) { 
-                newchisq=this.chi2;
+            this.chi2 = this.calc_chi2(swimmer);
+            if (this.chi2 < newchisq) {
+                newchisq = this.chi2;
                 KFHelix = sv.setTrackPars();
                 finalStateVec = sv.trackTraj.get(0);
                 setFitFailed = false;
-            }
-            else {
-                this.chi2 =newchisq ;
+            } else {
+                this.chi2 = newchisq;
                 break;
             }
         }
     }
 
+    /**
+     * Calculate the chi square of the Kalman Filter.
+     *
+     * @param swimmer Propagate a charged particle into a magnetic field by using Runge-Kutta 4th differential equation solver
+     * @return double chi square
+     */
+    // TODO : refaire le calcul du chi square probablement faux
     private double calc_chi2(Swim swimmer) {
-        double chi2 =0;
+        double chi2 = 0;
         int ndf = -5;
-        StateVec stv = sv.transported(0, 1, sv.trackTraj.get(0), mv.measurements.get(1), swimmer);
+        StateVec stv = sv.transported(0, 1, sv.trackTraj.get(0), mv.measurements.get(1), swimmer, 1);
         double dh = mv.dh(1, stv);
-        if(!mv.measurements.get(1).skip) {
-            chi2 = dh*dh / mv.measurements.get(1).error;
+        if (!mv.measurements.get(1).skip) {
+            chi2 = dh * dh / mv.measurements.get(1).error;
             ndf++;
         }
-        for(int k = 1; k< sv.X0.size()-1; k++) {
-            if(!mv.measurements.get(k + 1).skip) {
-                stv = sv.transported(k, k+1, stv, mv.measurements.get(k+1), swimmer);
-                dh = mv.dh(k+1, stv);
-                chi2 += dh*dh / mv.measurements.get(k+1).error;
+        for (int k = 1; k < sv.X0.size() - 1; k++) {
+            if (!mv.measurements.get(k + 1).skip) {
+                stv = sv.transported(k, k + 1, stv, mv.measurements.get(k + 1), swimmer, 1);
+                dh = mv.dh(k + 1, stv);
+                chi2 += dh * dh / mv.measurements.get(k + 1).error;
                 ndf++;
             }
-        }  
+        }
         return chi2;
     }
 
-    public double deltaETot = 0;
-    
+    /**
+     * Update the state vector and the covariance matrix as explain in the paper. (cf constructor)
+     *
+     * @param k       step of the Kalman Filter
+     * @param swimmer cf constructor
+     * @param dir     direction
+     */
     private void filter(int k, Swim swimmer, int dir) {
         if (sv.trackTraj.get(k) != null && sv.trackCov.get(k).covMat != null && !mv.measurements.get(k).skip) {
-            double[] vals = {0., 0., 0., 0., 0.};
-            Matrix K = new Matrix(vals); // Gain matrix
-            double V = mv.measurements.get(k).error; // measurement error covariance matrix
-            Matrix V = new Matrix(V);
-            double dh = mv.dh(k, sv.trackTraj.get(k)); // measurement residual -> distance
-            
-            //get the projector Matrix
-            double[] H = mv.H(sv.trackTraj.get(k), sv,  mv.measurements.get(k), swimmer, dir);
-            Matrix H = new Matrix(H);
-            double[][] HTGH = new double[][]{
-                {H[0] * H[0] / V, H[0] * H[1] / V, H[0] * H[2] / V, H[0] * H[3] / V, H[0] * H[4] / V},
-                {H[1] * H[0] / V, H[1] * H[1] / V, H[1] * H[2] / V, H[1] * H[3] / V, H[1] * H[4] / V},
-                {H[2] * H[0] / V, H[2] * H[1] / V, H[2] * H[2] / V, H[2] * H[3] / V, H[2] * H[4] / V},
-                {H[3] * H[0] / V, H[3] * H[1] / V, H[3] * H[2] / V, H[3] * H[3] / V, H[3] * H[4] / V},
-                {H[4] * H[0] / V, H[4] * H[1] / V, H[4] * H[2] / V, H[4] * H[3] / V, H[4] * H[4] / V}
-            };
+            RealMatrix V = MatrixUtils.createRealMatrix(1, 1); // Noise covariance matrix
+            V.addToEntry(0, 0, mv.measurements.get(k).error);
+            RealMatrix C = sv.trackCov.get(k).covMat; // Covariance matrix
+            double[] H_table = mv.H(sv.trackTraj.get(k), sv, mv.measurements.get(k), swimmer, dir);
+            RealMatrix H = new Array2DRowRealMatrix(H_table); // Jacobian matrix of the function h
+            H = H.transpose();
+            RealMatrix Inter = MatrixUtils.inverse(V.add(H.multiply(C.multiply(H.transpose()))));
+            RealMatrix K = C.multiply(H.transpose().multiply(Inter)); // Kalman gain matrix
 
-            Matrix C = sv.trackCov.get(k).covMat;
-            Matrix interm = (H.times(C)).times(H.transpose);
-
-            sv.printMatrix(interm);
-
+            // Extrapolated state vector
             double drho_filt = sv.trackTraj.get(k).d_rho;
             double phi0_filt = sv.trackTraj.get(k).phi0;
             double kappa_filt = sv.trackTraj.get(k).kappa;
             double dz_filt = sv.trackTraj.get(k).dz;
             double tanL_filt = sv.trackTraj.get(k).tanL;
 
-            // System.out.println("Before : drho = " + drho_filt + " phi0 = " + phi0_filt + " kappa = " + kappa_filt + " dz = " + dz_filt + " tanL = " + tanL_filt);
+            double dh = mv.dh(k, sv.trackTraj.get(k)); // measurement residual -> distance
 
+            // Update of the state vector
             if (!Double.isNaN(dh)) {
-                drho_filt -= K[0] * dh;
-                phi0_filt -= K[1] * dh;
-                kappa_filt -= K[2] * dh;
-                dz_filt -= K[3] * dh;
-                tanL_filt -= K[4] * dh;
+                drho_filt = drho_filt + K.getEntry(0, 0) * dh;
+                phi0_filt = phi0_filt + K.getEntry(1, 0) * dh;
+                kappa_filt = kappa_filt + K.getEntry(2, 0) * dh;
+                dz_filt = dz_filt + K.getEntry(3, 0) * dh;
+                tanL_filt = tanL_filt + K.getEntry(4, 0) * dh;
             }
 
-            // TODO add energy loss here :
-            //Compute the distance between k and k+1
-            Point3D start = new Point3D(sv.trackTraj.get(k-1).x, sv.trackTraj.get(k-1).y, sv.trackTraj.get(k-1).z);
-            Point3D end = new Point3D(sv.trackTraj.get(k).x, sv.trackTraj.get(k).y, sv.trackTraj.get(k).z);
-            double distance = start.distance(end);
+            // Update of the covariance matrix
+            RealMatrix I = MatrixUtils.createRealIdentityMatrix(5);
+            RealMatrix C_filt = (I.subtract(K.multiply(H))).multiply(C);
 
-            //Compute the momentum at k :
-            Vector3D P = sv.P(k-1);
-            double p = P.mag(); // MeV
-            double mass = 938.27208816; // proton
-            double c = 0.299792458;
-            double beta = p / Math.sqrt(p * p + mass * mass); // particle momentum
-            double m_ec2 = 0.5109989461; // MeV
-            double K_ = 0.307075; // Mev mol-1 cm2
-            double z = 1; // charge number of the proton
-            double gamma = 1/(Math.sqrt(1-beta*beta));
-            double W_max = 2*m_ec2*beta*beta*gamma*gamma;
+            StateVec fVec = new StateVec(sv.trackTraj.get(k).k);
 
-            double X = Math.log(beta*gamma);
-            // For Helium :
-            double X0 = 2.202; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
-            double X1 = 4.0; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
-            double a = 0.0114; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
-            double m = 7.625; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
-            double C = 11.139; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
-            double Z = 2; // atomic number of helium
-            double I = 10*Z; // eV
-            double A = 4.002602; // g/mol
-            double rho = 0.1664*0.001; // density of helium at 20°C and 1 atm in g/cm3 found on https://www.engineeringtoolbox.com/gas-density-d_158.html
-            double deltaX = 0;
-            if(X>X0 && X<X1) {deltaX = 4.6052*X + a*Math.pow((X1-X),m) + C;}
-            else if(X>X1) {deltaX = 4.6052*X + C;}
-            double deltaE1 = K_*z*z*Z/A*1/(beta*beta)*(0.5*Math.log((2*m_ec2*beta*beta*gamma*gamma*W_max)/(I*I)) - beta*beta - deltaX/2)*distance*0.1*rho;
 
-            // For CO2 :
-            X0 = 1.629; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
-            X1 = 4.0; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
-            a = 0.1944; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
-            m = 3.027; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
-            C = 10.154; // Find in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.26.6067
-            A = 44.01; // g/mol
-            Z = 22; // atomic number of CO2
-            rho = 1.842*0.001; // density of CO2 at 20°C and 1 atm in g/cm3 found on https://www.engineeringtoolbox.com/gas-density-d_158.html
-            if(X>X0 && X<X1) {deltaX = 4.6052*X + a*Math.pow((X1-X),m) + C;}
-            else if(X>X1) {deltaX = 4.6052*X + C;}
-            double deltaE2 = K_*z*z*Z/A*1/(beta*beta)*(0.5*Math.log((2*m_ec2*beta*beta*gamma*gamma*W_max)/(I*I)) - beta*beta - deltaX/2)*distance*0.1*rho;
-
-            double w = 4*4.002602 + 44.01;
-            double w1 = 4*4.002602/w; // weight fraction of the 1th element (helium)
-            double w2 = 44.01/w; // weight fraction of the 2th element (CO2)
-            double deltaE = w1*deltaE1 + w2*deltaE2;
-            deltaETot += deltaE;
-
-            StateVec fVec = sv.new StateVec(sv.trackTraj.get(k).k);
-
+            // Record the update step 
             fVec.d_rho = drho_filt;
             fVec.phi0 = phi0_filt;
             fVec.kappa = kappa_filt;
             fVec.dz = dz_filt;
             fVec.tanL = tanL_filt;
             fVec.alpha = sv.trackTraj.get(k).alpha;
-            sv.setStateVecPosAtMeasSite(k, fVec, mv.measurements.get(k), swimmer);
 
             double dh_filt = mv.dh(k, fVec);
-            if (Math.abs(dh_filt) < Math.abs(dh)
-                    && Math.abs(dh_filt) / Math.sqrt(V) < this.getResiCut()) {
+            if (Math.abs(dh_filt) < Math.abs(dh) && Math.abs(dh_filt) / Math.sqrt(V.getEntry(0, 0)) < this.getResiCut()) {
                 sv.trackTraj.get(k).d_rho = drho_filt;
                 sv.trackTraj.get(k).phi0 = phi0_filt;
                 sv.trackTraj.get(k).kappa = kappa_filt;
@@ -261,6 +241,7 @@ public class KFitter {
                 sv.trackTraj.get(k).x = fVec.x;
                 sv.trackTraj.get(k).y = fVec.y;
                 sv.trackTraj.get(k).z = fVec.z;
+                sv.trackCov.get(k).covMat = C_filt;
             } else {
                 this.NDF--;
                 mv.measurements.get(k).skip = true;
@@ -332,27 +313,39 @@ public class KFitter {
     public void printMatrix(Matrix C) {
         System.out.println("    ");
         for (int k = 0; k < 5; k++) {
-            System.out.println(C.get(k, 0)+"	"+C.get(k, 1)+"	"+C.get(k, 2)+"	"+C.get(k, 3)+"	"+C.get(k, 4));
+            System.out.println(C.get(k, 0) + "	" + C.get(k, 1) + "	" + C.get(k, 2) + "	" + C.get(k, 3) + "	" + C.get(k, 4));
         }
         System.out.println("    ");
     }
 
+    /**
+     * Test if @param mat is non singular (invertible : if B exist such that AB = BA = I)
+     * Should be remove if the matrix library is change
+     *
+     * @param mat Matrix A
+     * @return boolean True if mat is non singular or False if not
+     */
     private boolean isNonsingular(Matrix mat) {
         double matDet = mat.det();
         return !(Math.abs(matDet) < 1.e-30);
     }
 
+    /**
+     * Print d_rho, phi_0, kappa, dz, tanL, x, y, z, phi and theta for @param sv -- used for debugging
+     *
+     * @param sv State vector
+     */
     private void printStateVec(StateVec sv) {
-        System.out.println(sv.k+"]  ");
-        System.out.println((float)sv.d_rho+", "+
-            (float)sv.phi0+", "+
-            (float)sv.kappa+", "+
-            (float)sv.dz+", "+
-            (float)sv.tanL+" xyz "+new Point3D(sv.x,sv.y,sv.z)+" phi "+Math.toDegrees(Math.atan2(sv.y,sv.x))+" theta "+Math.toDegrees(Math.atan2(sv.y,sv.z-sv.dz)));
+        System.out.println(sv.k + "]  ");
+        System.out.println((float) sv.d_rho + ", " +
+                (float) sv.phi0 + ", " +
+                (float) sv.kappa + ", " +
+                (float) sv.dz + ", " +
+                (float) sv.tanL + " xyz " + new Point3D(sv.x, sv.y, sv.z) + " phi " + Math.toDegrees(Math.atan2(sv.y, sv.x)) + " theta " + Math.toDegrees(Math.atan2(sv.y, sv.z - sv.dz)));
         System.out.println("  ");
     }
 
-    public class HitOnTrack {
+    public static class HitOnTrack {
 
         public int layer;
         public double x;
@@ -362,7 +355,7 @@ public class KFitter {
         public double py;
         public double pz;
         public boolean isMeasUsed = true;
-        
+
         HitOnTrack(int layer, double x, double y, double z, double px, double py, double pz) {
             this.layer = layer;
             this.x = x;

@@ -41,6 +41,12 @@ public class Cluster extends ArrayList<PreCluster> {
         this._V = this._Y/(this._X*this._X + this._Y*this._Y);
     }
 
+    public Cluster(double X, double Y, double Z){
+        this._X = X;
+        this._Y = Y;
+        this._Z = Z;
+    }
+
     @Override
     public String toString() {
         return "Cluster{" +
