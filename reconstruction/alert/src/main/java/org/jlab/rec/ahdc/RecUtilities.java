@@ -44,7 +44,7 @@ public class RecUtilities {
             Strip strip = new Strip(id,0,x_start,y_start,z_start,x_end,y_end,z_end);
             Surface meas = new Surface(cyl,strip);
             meas.setLayer(id);
-            meas.setError(0);
+            meas.setError(0.01);
             meas.setSector(0);
             KFSites.add(meas);
             id++;
@@ -69,7 +69,7 @@ public class RecUtilities {
                 Cylindrical3D cyl = new Cylindrical3D(arc, height);
                 Surface meas = new Surface(cyl, origin);
                 meas.setLayer(id);
-                meas.setError(0);
+                meas.setError(1e-6);
                 meas.setSector(0);
                 KFSites.add(meas);
                 id++;

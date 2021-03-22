@@ -83,6 +83,27 @@ public class Swim {
         _charge = direction * charge;
     }
 
+    public void SetSwimParameters(int direction, double x0, double y0, double z0, double thx, double thy, double p,
+                                  int charge, double stepSize, double accuracy) {
+
+        // x,y,z in m = swimmer units
+        _x0 = x0 / 100;
+        _y0 = y0 / 100;
+        _z0 = z0 / 100;
+        this.checkR(_x0, _y0, _z0);
+        double pz = direction * p / Math.sqrt(thx * thx + thy * thy + 1);
+        double px = thx * pz;
+        double py = thy * pz;
+        _phi = Math.toDegrees(FastMath.atan2(py, px));
+        _pTot = Math.sqrt(px * px + py * py + pz * pz);
+        _theta = Math.toDegrees(Math.acos(pz / _pTot));
+
+        _charge = direction * charge;
+
+        this.stepSize = stepSize;
+        this.accuracy = accuracy;
+    }
+
     /**
      * Sets the parameters used by swimmer based on the input track state vector
      * parameters swimming outwards
@@ -136,6 +157,23 @@ public class Swim {
         _theta = Math.toDegrees(Math.acos(pz / _pTot));
 
         _charge = charge;
+
+
+
+    }
+    public void SetSwimParameters(double x0, double y0, double z0, double px, double py, double pz, int charge, double stepSize, double accuracy) {
+        _x0 = x0 / 100;
+        _y0 = y0 / 100;
+        _z0 = z0 / 100;
+        this.checkR(_x0, _y0, _z0);
+        _phi = Math.toDegrees(FastMath.atan2(py, px));
+        _pTot = Math.sqrt(px * px + py * py + pz * pz);
+        _theta = Math.toDegrees(Math.acos(pz / _pTot));
+
+        _charge = charge;
+
+        this.stepSize = stepSize;
+        this.accuracy = accuracy;
 
     }
 
@@ -503,6 +541,32 @@ public class Swim {
         } catch (RungeKuttaException e) {
                 e.printStackTrace();
         }
+        return value;
+
+    }
+
+    public double[] SwimRhoFixed(double radius)  {
+
+        double[] value = new double[8];
+
+        // using adaptive stepsize
+        if(this.SwimUnPhys) return null;
+
+        SwimResult result = new SwimResult(6);
+
+        PC.CF.swimRhoFixed(_charge, _x0, _y0, _z0, _pTot, _theta, _phi, radius/100, accuracy, _rMax, stepSize, result);
+
+        value[0] = result.getUf()[0] * 100; // convert back to cm
+        value[1] = result.getUf()[1] * 100; // convert back to cm
+        value[2] = result.getUf()[2] * 100; // convert back to cm
+        value[3] = result.getUf()[3] * _pTot; // normalized values
+        value[4] = result.getUf()[4] * _pTot;
+        value[5] = result.getUf()[5] * _pTot;
+        value[6] = result.getFinalS() * 100;
+        value[7] = 0; // Conversion from kG.m to T.cm
+
+
+
         return value;
 
     }

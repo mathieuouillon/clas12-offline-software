@@ -1,0 +1,496 @@
+package org.jlab.rec.ahdc.KalmanFilter;
+
+import org.apache.commons.math3.linear.MatrixUtils;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealMatrixFormat;
+import org.jetbrains.annotations.NotNull;
+import org.jlab.clas.clas.math.FastMath;
+import org.jlab.clas.swimtools.Swim;
+import org.jlab.clas.tracking.kalmanfilter.Surface;
+import org.jlab.clas.tracking.trackrep.Helix;
+import org.jlab.geom.prim.Point3D;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+public class KalmanFilter5Dbackup4 {
+
+    RealMatrixFormat TABLE_FORMAT = new RealMatrixFormat("", "", "", "\n", "", ", ");
+
+    Swim swim;
+
+    int ch = 1;
+
+    double B = 5; // magnetic field in Tesla
+    double c = 0.000299792458; // speed of light for conversion in GeV and mm
+    double alpha = 1 / (B * c);
+
+    List<StateVector> ExtrapoleStateVectors;
+    List<StateVector> UpdateStateVectors;
+    List<StateVector> SmoothStateVectors;
+
+    List<RealMatrix> ExtrapolateCovarianceMatrices;
+    List<RealMatrix> UpdateCovarianceMatrices;
+    List<RealMatrix> SmoothCovarianceMatrices;
+
+    List<RealMatrix> FMatrices;
+
+    public static class MeasurementPoint{
+
+        public double xo;
+        public double yo;
+        public double zo;
+        public RealMatrix m;
+
+        public MeasurementPoint(double x, double y, double z){
+            this.xo = x;
+            this.yo = y;
+            this.zo = z;
+            this.m = MatrixUtils.createRealMatrix(3, 1);
+            m.setColumn(0, new double[]{x,y,z});
+        }
+
+        @Override
+        public String toString() {
+            return "MeasurementPoint{" +
+                    "xo=" + xo +
+                    ", yo=" + yo +
+                    ", zo=" + zo +
+                    '}';
+        }
+    }
+
+    public static class StateVector {
+        int k;
+        double d_rho;
+        double phi_0;
+        double kappa;
+        double dz;
+        double tanL;
+
+        RealMatrix a;
+
+        MeasurementPoint m;
+
+        public StateVector(int k, double x, double y, double z, double px, double py, double pz, MeasurementPoint m){
+            this.k = k;
+            this.m = m;
+
+            transformPosAndMomToStateVector(x,y,z,px,py,pz);
+        }
+
+        public StateVector(int k, RealMatrix a, MeasurementPoint m){
+            this.k = k;
+            this.d_rho = a.getEntry(0,0);
+            this.phi_0 = a.getEntry(1,0);
+            this.kappa = a.getEntry(2,0);
+            this.dz =    a.getEntry(3,0);
+            this.tanL =  a.getEntry(4,0);
+
+            this.a = a;
+
+            this.m = m;
+        }
+
+        public StateVector(int k, double d_rho, double phi_0, double kappa, double dz, double tanL, MeasurementPoint m){
+            this.k = k;
+            this.d_rho = d_rho;
+            this.phi_0 = phi_0;
+            this.kappa = kappa;
+            this.dz =    dz;
+            this.tanL =  tanL;
+
+            this.a = MatrixUtils.createRealMatrix(5,1);
+            a.setColumn(0,new double[]{d_rho,phi_0,kappa,dz,tanL});
+
+            this.m = m;
+        }
+
+        private void transformPosAndMomToStateVector(double x, double y, double z, double px, double py, double pz) {
+            double kappa = 1. / FastMath.sqrt(px * px + py * py);
+            double phi_0 = 0;
+            if (-px * kappa < 0) phi_0 = -Math.acos(py * kappa);
+            if (-px * kappa > 0) phi_0 = Math.acos(py * kappa);
+            double tanL = pz * kappa;
+            double dz = z - m.zo;
+            double S = FastMath.sin(phi_0);
+            double C = FastMath.cos(phi_0);
+            double d_rho;
+            if(Math.abs(S)>=Math.abs(C)) {
+                d_rho = -(x- m.xo)/S;
+            } else {
+                d_rho = (y-m.yo)/C;
+            }
+
+
+            this.d_rho = d_rho;
+            this.phi_0 = phi_0;
+            this.kappa = kappa;
+            this.dz = dz;
+            this.tanL = tanL;
+
+            this.a = MatrixUtils.createRealMatrix(5, 1);
+            a.setColumn(0, new double[]{d_rho, phi_0, kappa, dz, tanL});
+        }
+
+        @Override
+        public String toString() {
+            double x = m.xo + this.d_rho * FastMath.cos(this.phi_0);
+            double y = m.yo + this.d_rho * FastMath.sin(this.phi_0);
+            double z = m.zo + this.dz;
+            double px = -1. / Math.abs(this.kappa) * FastMath.sin(this.phi_0);
+            double py = 1. / Math.abs(this.kappa) * FastMath.cos(this.phi_0);
+            double pz = 1. / Math.abs(this.kappa) * this.tanL;
+            return "StateVector{" +
+                    "k=" + k +
+                    ", d_rho=" + d_rho +
+                    ", phi_0=" + phi_0 +
+                    ", kappa=" + kappa +
+                    ", dz=" + dz +
+                    ", tanL=" + tanL +
+                    ", x =" + x +
+                    ", y =" + y +
+                    ", z =" + z +
+                    ", px =" + px +
+                    ", py =" + py +
+                    ", pz =" + pz +
+                    ", meas x = " + m.xo +
+                    ", meas y = " + m.yo +
+                    ", meas z = " + m.zo +
+                    '}'+'\n';
+        }
+    }
+
+
+    public KalmanFilter5Dbackup4(Swim swimmer) {
+        swim = swimmer;
+    }
+
+    public void runKalmanFilter(double[] starting, @NotNull List<Surface> measSurfaces, double p_gf) {
+
+        boolean debug = false;
+
+        // Create list MeasurementPoint :
+        int i = 0;
+        List<MeasurementPoint> measPoints = new ArrayList<>();
+        for (Surface meas : measSurfaces) {
+            measPoints.add(new MeasurementPoint(meas.refPoint.x(), meas.refPoint.y(), meas.refPoint.z()));
+            i++;
+        }
+        // for (int k = 0; k < measPoints.size() - 1; k++ ) System.out.println(measPoints.get(k));
+
+        // Initialization des Lists :
+        ExtrapoleStateVectors = new ArrayList<>(Collections.nCopies(i+2, null));
+        UpdateStateVectors = new ArrayList<>(Collections.nCopies(i+2, null));
+        SmoothStateVectors = new ArrayList<>(Collections.nCopies(i+2, null));
+        ExtrapolateCovarianceMatrices = new ArrayList<>(Collections.nCopies(i+2, null));
+        UpdateCovarianceMatrices = new ArrayList<>(Collections.nCopies(i+2, null));
+        SmoothCovarianceMatrices = new ArrayList<>(Collections.nCopies(i+2, null));
+
+        FMatrices = new ArrayList<>(Collections.nCopies(i+2, null));
+
+        // Create two point at the start of the wall target (p1) and a the end of the wall target (p2)
+        Helix helix = new Helix(starting[0],starting[1],starting[2],starting[3],starting[4],starting[5],ch,5,measPoints.get(0).xo,measPoints.get(0).yo, Helix.Units.MM);
+        Point3D p1 = helix.getHelixPointAtR(6);
+        Point3D p2 = helix.getHelixPointAtR(6.05);
+
+        measPoints.add(1,new MeasurementPoint(p1.x(),p1.y(), p1.z()));
+        measPoints.add(2,new MeasurementPoint(p2.x(),p2.y(), p2.z()));
+
+        // Initialisation du state vector :
+        //System.out.println("Starting : " + Arrays.toString(starting));
+        StateVector aInit = new StateVector(1,starting[0],starting[1],starting[2],starting[3],starting[4],starting[5],measPoints.get(0));
+        UpdateStateVectors.set(0,aInit);
+        if (debug) System.out.println(aInit);
+        // Initialisation de la matrix de covariance :
+        RealMatrix PInit = MatrixUtils.createRealMatrix(5,5);
+/*
+        PInit.setEntry(0,0,aInit.d_rho*aInit.d_rho);
+        PInit.setEntry(1,0,aInit.d_rho*aInit.phi_0);
+        PInit.setEntry(0,1,aInit.d_rho*aInit.phi_0);
+        PInit.setEntry(2,0,aInit.d_rho*aInit.kappa);
+        PInit.setEntry(0,2,aInit.d_rho*aInit.kappa);
+        PInit.setEntry(2,1,aInit.phi_0*aInit.kappa);
+        PInit.setEntry(1,2,aInit.phi_0*aInit.kappa);
+        PInit.setEntry(1,1,aInit.phi_0*aInit.phi_0);
+        PInit.setEntry(2,2,aInit.kappa*aInit.kappa);
+        PInit.setEntry(3,3,aInit.dz*aInit.dz);
+        PInit.setEntry(3,4,aInit.tanL*aInit.dz);
+        PInit.setEntry(4,3,aInit.tanL*aInit.dz);
+        PInit.setEntry(4,4,aInit.tanL*aInit.tanL);
+*/
+        PInit = MatrixUtils.createRealIdentityMatrix(5).scalarMultiply(10);
+        UpdateCovarianceMatrices.set(0,PInit);
+
+
+
+        for (int j = 0; j < 5; j++) {
+            for (int k = 0; k < measPoints.size() - 1; k++) {
+                // First Step
+
+                // Extrapolation du State Vector :
+                StateVector ExtrapolateStateVector = f(UpdateStateVectors.get(k), measPoints.get(k), measPoints.get(k + 1), k + 1);
+                ExtrapoleStateVectors.set(k + 1, ExtrapolateStateVector);
+                // System.out.println(ExtrapolateStateVector);
+                if (Math.abs(ExtrapolateStateVector.d_rho) > 10 || Math.abs(ExtrapolateStateVector.dz) > 10) {
+                    System.out.println("Error Distance");
+                    return;
+                }
+
+                // Extrapolation de la matrix de covariance :
+                RealMatrix F = F(UpdateStateVectors.get(k), ExtrapoleStateVectors.get(k + 1));
+                RealMatrix FT = F.transpose();
+                RealMatrix Q = Q(UpdateStateVectors.get(k), ExtrapoleStateVectors.get(k + 1));
+                RealMatrix P = UpdateCovarianceMatrices.get(k);
+                RealMatrix FPFT = F.multiply(P).multiply(FT);
+                RealMatrix ExtrapolateCovarianceMatrix = FPFT.add(Q);
+
+                ExtrapolateCovarianceMatrices.set(k + 1, ExtrapolateCovarianceMatrix);
+                FMatrices.set(k + 1, F);
+
+                // Second Step
+                // Update du State Vector et de covariance matrix :
+
+                RealMatrix h = h(ExtrapoleStateVectors.get(k + 1));
+                RealMatrix H = H(ExtrapoleStateVectors.get(k + 1));
+                RealMatrix y = measPoints.get(k + 1).m.subtract(h);
+                RealMatrix R = MatrixUtils.createRealIdentityMatrix(3).scalarMultiply(0.1);
+                RealMatrix HT = H.transpose();
+                P = ExtrapolateCovarianceMatrices.get(k+1);
+                RealMatrix HPHT = H.multiply(P).multiply(HT);
+                RealMatrix S = HPHT.add(R);
+
+                RealMatrix K = P.multiply(HT).multiply(MatrixUtils.inverse(S));
+                RealMatrix I = MatrixUtils.createRealIdentityMatrix(5);
+
+                RealMatrix a = ExtrapoleStateVectors.get(k+1).a;
+                a = a.add(K.multiply(y));
+                StateVector UpdateStateVector = new StateVector(k + 1, a, measPoints.get(k + 1));
+                UpdateStateVectors.set(k + 1, UpdateStateVector);
+
+                if (debug) System.out.println(UpdateStateVector);
+
+                RealMatrix UpdateCovarianceMatrix = (I.subtract(K.multiply(H))).multiply(ExtrapolateCovarianceMatrices.get(k + 1));
+                UpdateCovarianceMatrices.set(k + 1, UpdateCovarianceMatrix);
+            }
+
+
+
+            SmoothStateVectors.set(UpdateStateVectors.size() - 1, UpdateStateVectors.get(UpdateStateVectors.size() - 1));
+            SmoothCovarianceMatrices.set(UpdateCovarianceMatrices.size() - 1, UpdateCovarianceMatrices.get(UpdateCovarianceMatrices.size() - 1));
+
+
+
+            if (debug) System.out.println("Smoother : ");
+            // RTS Smoothing (Rauch-Tung-Striebel)
+            for (int k = measPoints.size() - 1; k > 0; k--) {
+
+                RealMatrix FT = FMatrices.get(k).transpose();
+                RealMatrix Update_P = UpdateCovarianceMatrices.get(k - 1);
+                RealMatrix InverseExtrapolate_P = MatrixUtils.inverse(ExtrapolateCovarianceMatrices.get(k));
+
+                RealMatrix A = Update_P.multiply(FT).multiply(InverseExtrapolate_P); // A_{k-1} = P_{k-1|k-1} F^T P_{k|k-1}^-1
+
+                RealMatrix Update_x = UpdateStateVectors.get(k - 1).a;
+                RealMatrix Smoothed_x = SmoothStateVectors.get(k).a;
+                RealMatrix Extrapolate_x = ExtrapoleStateVectors.get(k).a;
+
+                RealMatrix Inter = Smoothed_x.subtract(Extrapolate_x);
+                RealMatrix Inter2 = A.multiply(Inter);
+                RealMatrix xs = Update_x.add(Inter2); // x^s_{k-1} = x_{k-1|k-1} + A_{k-1} (x^s_{k} - x_{k|k-1})
+
+                RealMatrix Extrapolate_P = ExtrapolateCovarianceMatrices.get(k);
+                RealMatrix Smoothed_P = SmoothCovarianceMatrices.get(k);
+                RealMatrix AT = A.transpose();
+                RealMatrix Inter3 = Extrapolate_P.subtract(Smoothed_P);
+                RealMatrix Inter4 = A.multiply(Inter3).multiply(AT);
+                RealMatrix Ps = Update_P.subtract(Inter4); // P_{k-1}^s = P_{k-1|k-1} - A_{k-1} (P_{k|k-1} - P_{k}^s) A^T_{k-1}
+
+                StateVector as = new StateVector(k - 1, xs, measPoints.get(k - 1));
+                SmoothStateVectors.set(k - 1, as);
+                SmoothCovarianceMatrices.set(k - 1, Ps);
+
+                if (debug) System.out.println(as);
+            }
+        }
+
+        double kappa = SmoothStateVectors.get(0).kappa;
+        double phi_0 = SmoothStateVectors.get(0).phi_0;
+        double tanL = SmoothStateVectors.get(0).tanL;
+        double px = -1./Math.abs(kappa) * FastMath.sin(phi_0);
+        double py = 1./Math.abs(kappa) * FastMath.cos(phi_0);
+        double pz = 1./Math.abs(kappa) * tanL;
+        double p = FastMath.sqrt(px*px+py*py+pz*pz);
+
+        // System.out.println("p_gf = " + p_gf);
+        // System.out.println("p = " + p);
+
+        try {
+            BufferedWriter writer = new BufferedWriter(new FileWriter("Geant4Info.txt", true));
+            writer.write("mom_gf = " + p_gf + '\n');
+            writer.write("mom_kf = " + p + '\n');
+            writer.write('\n');
+            writer.close();
+        } catch (IOException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
+
+
+
+        //System.out.println("End !!!");
+        //System.out.println();
+
+    }
+
+    private StateVector f(StateVector a, MeasurementPoint m, MeasurementPoint m_prim, int k){
+        double xo = m.xo;
+        double yo = m.yo;
+        double zo = m.zo;
+
+        double xo_prim = m_prim.xo;
+        double yo_prim = m_prim.yo;
+        double zo_prim = m_prim.zo;
+
+        double Xc = xo + (a.d_rho + alpha/a.kappa) * FastMath.cos(a.phi_0);
+        double Yc = yo + (a.d_rho + alpha/a.kappa) * FastMath.sin(a.phi_0);
+
+        double fkappa = a.kappa;
+        double fphi_0 = 0;
+        if (fkappa > 0){ fphi_0 = Math.atan2((Yc-yo_prim),(Xc-xo_prim));}
+        if (fkappa < 0){ fphi_0 = Math.atan2((yo_prim-Yc),(xo_prim-Xc));}
+
+        if (fphi_0 > 0 && a.phi_0 < -Math.PI/2){
+            fphi_0 = fphi_0 -2*Math.PI;
+        }
+
+        double ftanL = a.tanL;
+
+        double fdz = zo - zo_prim + a.dz - (alpha/fkappa)*(fphi_0 - a.phi_0)*ftanL;
+
+        double fd_rho = (Xc-xo_prim)*Math.cos(fphi_0) + (Yc - yo_prim)*Math.sin(fphi_0) - (alpha/fkappa);
+
+        return new StateVector(k+1,fd_rho,fphi_0,fkappa,fdz,ftanL,m_prim);
+    }
+
+    private RealMatrix F(StateVector a, StateVector a_prim){
+
+        double d_rho = a.d_rho;
+        double phi_0 = a.phi_0;
+        double kappa = a.kappa;
+        double dz = a.dz;
+        double tanL = a.tanL;
+
+        double fd_rho = a_prim.d_rho;
+        double fphi_0 = a_prim.phi_0;
+        double fkappa = a_prim.kappa;
+        double fdz = a_prim.dz;
+        double ftanL = a_prim.tanL;
+
+
+        double dphi0_prm_del_drho = -1. / (fd_rho + alpha / kappa) * Math.sin(fphi_0 - phi_0);
+        double dphi0_prm_del_phi0 = (d_rho + alpha / kappa) / (fd_rho + alpha / kappa) * Math.cos(fphi_0 - phi_0);
+        double dphi0_prm_del_kappa = (alpha / (kappa*kappa)) / (fd_rho + alpha / kappa) * Math.sin(fphi_0 - phi_0);
+        double dphi0_prm_del_dz = 0;
+        double dphi0_prm_del_tanL = 0;
+
+        double drho_prm_del_drho = Math.cos(fphi_0 - phi_0);
+        double drho_prm_del_phi0 = (d_rho + alpha / kappa) * Math.sin(fphi_0 - phi_0);
+        double drho_prm_del_kappa = (alpha / (kappa*kappa)) * (1 - Math.cos(fphi_0 - phi_0));
+        double drho_prm_del_dz = 0;
+        double drho_prm_del_tanL = 0;
+
+        double dkappa_prm_del_drho = 0;
+        double dkappa_prm_del_phi0 = 0;
+        double dkappa_prm_del_dkappa = 1;
+        double dkappa_prm_del_dz = 0;
+        double dkappa_prm_del_tanL = 0;
+
+        double dz_prm_del_drho = ((alpha / kappa) / (fd_rho + alpha / kappa)) * tanL * Math.sin(fphi_0 - phi_0);
+        double dz_prm_del_phi0 = (alpha / kappa) * tanL * (1 - Math.cos(fphi_0 - phi_0) * (fd_rho + (alpha / kappa)) / (fd_rho + (alpha / kappa)));
+        double dz_prm_del_kappa = (alpha / (kappa*kappa)) * tanL * (fphi_0 - phi_0 - Math.sin(fphi_0 - phi_0) * (alpha / kappa) / (fd_rho + alpha / kappa));
+        double dz_prm_del_dz = 1;
+        double dz_prm_del_tanL = -alpha * (fphi_0 - phi_0) / kappa;
+
+        double dtanL_prm_del_drho = 0;
+        double dtanL_prm_del_phi0 = 0;
+        double dtanL_prm_del_dkappa = 0;
+        double dtanL_prm_del_dz = 0;
+        double dtanL_prm_del_tanL = 1;
+
+        double[][] FMat = new double[][]{
+                {drho_prm_del_drho, drho_prm_del_phi0, drho_prm_del_kappa, drho_prm_del_dz, drho_prm_del_tanL},
+                {dphi0_prm_del_drho, dphi0_prm_del_phi0, dphi0_prm_del_kappa, dphi0_prm_del_dz, dphi0_prm_del_tanL},
+                {dkappa_prm_del_drho, dkappa_prm_del_phi0, dkappa_prm_del_dkappa, dkappa_prm_del_dz, dkappa_prm_del_tanL},
+                {dz_prm_del_drho, dz_prm_del_phi0, dz_prm_del_kappa, dz_prm_del_dz, dz_prm_del_tanL},
+                {dtanL_prm_del_drho, dtanL_prm_del_phi0, dtanL_prm_del_dkappa, dtanL_prm_del_dz, dtanL_prm_del_tanL}
+        };
+
+        return MatrixUtils.createRealMatrix(FMat);
+
+    }
+
+    private RealMatrix Q(StateVector a, StateVector a_prim){
+        double pt = Math.abs(1. / a.kappa);
+        double pz = pt * a.tanL;
+        double p = Math.sqrt(pt * pt + pz * pz);
+        double mass = 0.93827208816;   // proton mass in GeV/c^2
+        double beta = p / Math.sqrt(p * p + mass * mass); // particle momentum
+
+        // Gas miture for ALERT : 4He-CO2
+        double w_He = 4 * 4.0026 / (4 * 4.0026 + 12.0107 + 2 * 15.999); // fraction by weight of helium
+        double w_C = 12.0107 / (4 * 4.0026 + 12.0107 + 2 * 15.999); // fraction by weight of carbon
+        double w_O = 2 * 15.999 / (4 * 4.0026 + 12.0107 + 2 * 15.999); // fraction by weight of oxygen
+
+        double X0_He = 94.32; // Radiation length in g/cm2 found on https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/helium_gas_He.html
+        double X0_C = 42.7; // Radiation length in g/cm2 found on https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/carbon_amorphous_C.html
+        double X0_O = 34.24; // Radiation length in g/cm2 found on https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/oxygen_gas.html
+
+        double X0 = 1 / (w_He / X0_He + w_C / X0_C + w_O / X0_O); // radiation length for gas mixture
+
+        double pathLenght = Math.abs(FastMath.sqrt((alpha/ a.kappa)*(alpha/ a.kappa)*(a.tanL+1)*(a.tanL+1))*(a_prim.phi_0-a.phi_0))/10;
+
+        double sctRMS = 0.0141 / (beta * p) * Math.sqrt(pathLenght / X0) * (1 + 1./9. * Math.log10(pathLenght/X0)); // Lynch-Dahl formula
+
+        double[][] q = {
+                {0, 0, 0, 0, 0},
+                {0, sctRMS * sctRMS * (1 + a.tanL * a.tanL), 0, 0, 0},
+                {0, 0, sctRMS * sctRMS * (a.kappa * a.kappa * a.tanL
+                        * a.tanL), 0, sctRMS * sctRMS * (a.kappa * a.tanL
+                        * (1 + a.tanL*a.tanL))},
+                {0, 0, 0, 0, 0},
+                {0, 0, sctRMS * sctRMS * (a.kappa * a.tanL * (1 + a.tanL
+                        * a.tanL)), 0, sctRMS * sctRMS * (1 + a.tanL*a.tanL)
+                        * (1 + a.tanL * a.tanL)}};
+
+        return MatrixUtils.createRealMatrix(q);
+    }
+
+    private RealMatrix h(StateVector a){
+        double x0 = a.m.xo + a.d_rho * Math.cos(a.phi_0);
+        double y0 = a.m.yo + a.d_rho * Math.sin(a.phi_0);
+        double z0 = a.m.zo + a.dz;
+
+        RealMatrix h = MatrixUtils.createRealMatrix(3,1);
+        h.setEntry(0,0,x0);
+        h.setEntry(1,0,y0);
+        h.setEntry(2,0,z0);
+
+        return h;
+    }
+
+    private RealMatrix H(StateVector a){
+        double[][] HMat;
+        HMat = new double[][]{{Math.cos(a.phi_0),-a.d_rho*Math.sin(a.phi_0),0.,0.,0.},
+                {Math.sin(a.phi_0),a.d_rho*Math.cos(a.phi_0),0.,0.,0.},
+                {0.,0.,0.,1.,0.}
+        };
+        return MatrixUtils.createRealMatrix(HMat);
+    }
+
+
+}

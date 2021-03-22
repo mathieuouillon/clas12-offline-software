@@ -222,7 +222,8 @@ public class Helix {
         this._R = _R;
     }
 
-    public void Reset(double d0, double phi0, double omega, double z0, double tanL, double B){
+    public void Reset(double d0, double phi0, double omega, double z0, double tanL,
+            double B){
         setD0(d0);
         setPhi0(phi0);
         setOmega(omega);
@@ -246,7 +247,8 @@ public class Helix {
         setPz(getPz(getB())); 
     }
     
-    public double getLAtPlane(double X1, double Y1, double X2, double Y2, double tolerance) {
+    public double getLAtPlane(double X1, double Y1, double X2, double Y2, 
+            double tolerance) {
         // Find the intersection of the helix circle with the module plane projection in XY which is a line
         // Plane representative line equation y = mx +d
         double X = 0;
@@ -324,12 +326,16 @@ public class Helix {
         
         return dphi/getOmega();
     }
-
-    public Point3D getHelixPointAtPlane(double X1, double Y1, double X2, double Y2, double tolerance) {
+    
+    
+    
+    public Point3D getHelixPointAtPlane(double X1, double Y1, double X2, double Y2, 
+            double tolerance) {
         double l = getLAtPlane(X1, Y1, X2, Y2, tolerance);
         return new Point3D(getX(l),getY(l),getZ(l));
     }
-    public Vector3D getMomentumAtPlane(double X1, double Y1, double X2, double Y2, double tolerance) {
+    public Vector3D getMomentumAtPlane(double X1, double Y1, double X2, double Y2, 
+            double tolerance) {
         double l = getLAtPlane(X1, Y1, X2, Y2, tolerance);
         return new Vector3D(getPx(getB(),l),getPy(getB(),l),getPz(getB()));
     }
@@ -340,7 +346,7 @@ public class Helix {
      * @return Computes intersection of helix with circle centered at 0 and of radius R
      */
     public double getLAtR(double r) {
-
+        
         double x;
         double y;
         
@@ -365,9 +371,9 @@ public class Helix {
             x = xm;
             y = ym;
         }
-
-        double phi1 = Math.atan2(_yd - getYc(), _xd - getXc());
-        double phi2 = Math.atan2(y - getYc(), x - getXc());
+       
+        double phi1 = Math.atan2(_yd -getYc(), _xd -getXc());
+        double phi2 = Math.atan2(y -getYc(), x -getXc());
         double dphi = phi2 - phi1;
         //  put dphi in (-pi, pi)
         if (dphi > Math.PI) {

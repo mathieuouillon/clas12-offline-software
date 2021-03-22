@@ -1,0 +1,187 @@
+package org.jlab.rec.ahdc.KalmanFilter;
+
+import org.apache.commons.math3.linear.MatrixUtils;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.jetbrains.annotations.NotNull;
+import org.jlab.clas.clas.math.FastMath;
+import org.jlab.clas.swimtools.Swim;
+import org.jlab.clas.tracking.kalmanfilter.Surface;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+public class KalmanFilter5Dbackup2 {
+
+    Swim swim;
+
+    int ch = 1;
+
+    double c = 0.000299792458; // speed of light
+
+    double stepSize = 0.1e-6;
+    double accuracy = 1e-6;
+
+    public static class MeasurementPoint{
+
+        public int k;
+        public double xo;
+        public double yo;
+        public double zo;
+        public RealMatrix ẑ;
+
+        public MeasurementPoint(int k, double x, double y, double z){
+            this.k = k;
+            this.xo = x;
+            this.yo = y;
+            this.zo = z;
+            this.ẑ = MatrixUtils.createRealMatrix(3, 1);
+            ẑ.setColumn(0, new double[]{x,y,z});
+        }
+    }
+
+    public static class StateVector {
+        int k;
+        public double dρ;
+        public double ϕ0;
+        public double κ;
+        public double dz;
+        public double tanλ;
+        public RealMatrix a;
+
+        public StateVector(int k, double x, double y, double z, double px, double py, double pz, MeasurementPoint m) {
+            this.k = k;
+            transformPosAndMomToStateVector(x, y, z, px, py, pz, m);
+        }
+
+        private void transformPosAndMomToStateVector(double x, double y, double z, double px, double py, double pz, MeasurementPoint m) {
+            double κ = 1. / FastMath.sqrt(px * px + py * py);
+            double ϕ0 = 0;
+            if (-px * κ < 0) ϕ0 = -Math.acos(py * κ);
+            if (-px * κ > 0) ϕ0 = Math.acos(py * κ);
+            double tanλ = pz * κ;
+            double dz = z - m.zo;
+            double S = FastMath.sin(ϕ0);
+            double C = FastMath.cos(ϕ0);
+            double dρ = 0;
+            if(Math.abs(S)>=Math.abs(C)) {
+                dρ = -(x- m.xo)/S;
+            } else {
+                dρ = (y-m.yo)/C;
+            }
+
+
+            this.dρ = dρ;
+            this.ϕ0 = ϕ0;
+            this.κ = κ;
+            this.dz = dz;
+            this.tanλ = tanλ;
+
+            this.a = MatrixUtils.createRealMatrix(5, 1);
+            a.setColumn(0, new double[]{dρ, ϕ0, κ, dz, tanλ});
+        }
+
+        public void println(@NotNull MeasurementPoint m) {
+            double x = m.xo + this.dρ * FastMath.cos(this.ϕ0);
+            double y = m.yo + this.dρ * FastMath.sin(this.ϕ0);
+            double z = m.zo + this.dz;
+            double px = -1. / Math.abs(this.κ) * FastMath.sin(this.ϕ0);
+            double py = 1. / Math.abs(this.κ) * FastMath.cos(this.ϕ0);
+            double pz = 1. / Math.abs(this.κ) * this.tanλ;
+            System.out.println("StateVector {" +
+                    "k=" + k +
+                    ", dρ=" + dρ +
+                    ", ϕ0=" + ϕ0 +
+                    ", κ=" + κ +
+                    ", dz=" + dz +
+                    ", tanλ=" + tanλ +
+                    ", x =" + x +
+                    ", y =" + y +
+                    ", z =" + z +
+                    ", px =" + px +
+                    ", py =" + py +
+                    ", pz =" + pz +
+                    ", meas x = " + m.xo +
+                    ", meas y = " + m.yo +
+                    ", meas z = " + m.zo +
+                    '}' + '\n');
+            if (dρ>1){
+                System.out.println("dρ is too big !!!");
+                System.exit(0);
+            }
+        }
+    }
+
+    public KalmanFilter5Dbackup2(Swim swimmer) {
+        swim = swimmer;
+    }
+
+    public void runKalmanFilter(double[] starting, @NotNull List<Surface> measSurfaces) {
+        boolean debug = true;
+
+        // Create list MeasurementPoint :
+        int i = 0;
+        List<MeasurementPoint> measPoints = new ArrayList<>();
+        for (Surface meas : measSurfaces) {
+            measPoints.add(new MeasurementPoint(i, meas.refPoint.x(), meas.refPoint.y(), meas.refPoint.z()));
+            i++;
+        }
+
+        // Initialization of the lists :
+
+        // Initialization of the Kalman Filter :
+        if (debug) System.out.println("Starting : " + Arrays.toString(starting));
+        StateVector a = new StateVector(0,starting[0],starting[1],starting[2],starting[3],starting[4],starting[5], measPoints.get(0));
+        if (debug) System.out.println("Starting !!!");
+
+        for (int k = 0; k < measPoints.size() - 1; k++ ) {
+            double r = Math.hypot(measPoints.get(k+1).xo, measPoints.get(k+1).yo);
+            a = f(a, measPoints.get(k), measPoints.get(k+1), r, k+1);
+            a.println(measPoints.get(k+1));
+        }
+
+        if (debug) System.out.println("End !!!");
+
+    }
+
+    private StateVector f(StateVector a, MeasurementPoint m, MeasurementPoint m_prim, double r, int k){
+        double xo = m.xo + a.dρ*FastMath.cos(a.ϕ0);
+        double yo = m.yo + a.dρ*FastMath.sin(a.ϕ0);
+        double zo = m.zo + a.dz;
+        double pxo = -1./Math.abs(a.κ) * FastMath.sin(a.ϕ0);
+        double pyo = 1./Math.abs(a.κ) * FastMath.cos(a.ϕ0);
+        double pzo = 1./Math.abs(a.κ) * a.tanλ;
+
+        System.out.println("1 : xo = " + xo + " yo = " + yo + " zo = " + zo + " pxo = " + pxo + " pyo = " + pyo + " pzo = " + pzo);
+
+        swim.SetSwimParameters(xo/10.,yo/10.,zo/10.,pxo,pyo,pzo,ch);
+
+        double[] swimParams = swim.SwimRho(r/10.);
+
+        System.out.println("swimParams = " + Arrays.toString(swimParams));
+
+        double x = 0;
+        double y = 0;
+        double z = 0;
+        double px = 0;
+        double py = 0;
+        double pz = 0;
+        double pathlength = 0;
+
+        try{
+            x = swimParams[0]*10;
+            y = swimParams[1]*10;
+            z = swimParams[2]*10;
+            px = swimParams[3];
+            py = swimParams[4];
+            pz = swimParams[5];
+            pathlength = swimParams[6];
+        }
+        catch (NullPointerException e){
+            System.out.println("SwimParams is null");
+            System.exit(1);
+        }
+
+        return new StateVector(k,x,y,z,px,py,pz,m_prim);
+    }
+}

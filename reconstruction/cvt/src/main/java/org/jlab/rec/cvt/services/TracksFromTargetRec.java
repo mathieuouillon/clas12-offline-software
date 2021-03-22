@@ -102,7 +102,7 @@ public class TracksFromTargetRec {
             if(Math.abs(Constants.getSolenoidVal())>0.001 &&
                     Constants.LIGHTVEL * seed.get_Helix().radius() *Constants.getSolenoidVal()<Constants.PTCUT)
                 continue;
-                kf = new org.jlab.clas.tracking.kalmanfilter.helical.KFitter( hlx, cov, swimmer,
+                kf = new org.jlab.clas.tracking.kalmanfilter.helical.KFitter( hlx, cov, event,swimmer,
                     org.jlab.rec.cvt.Constants.getXb(), 
                     org.jlab.rec.cvt.Constants.getYb(),
                     shift, 

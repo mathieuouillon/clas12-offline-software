@@ -1,0 +1,378 @@
+package org.jlab.rec.ahdc.KalmanFilter;
+
+import org.apache.commons.math3.linear.MatrixUtils;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.jetbrains.annotations.NotNull;
+import org.jlab.clas.clas.math.FastMath;
+import org.jlab.clas.swimtools.Swim;
+import org.jlab.clas.tracking.kalmanfilter.Surface;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+public class KalmanFilter5Dbackup1 {
+
+    Swim swim;
+
+    int ch = 1;
+
+    double c = 0.000299792458; // speed of light
+
+    double stepSize = 0.1e-6;
+    double accuracy = 1e-6;
+
+    public List<ExtrapolateStateVector> ExtrapolateStateVectors;
+    public List<UpdateStateVector> UpdateStateVectors;
+
+    public static class MeasurementPoint{
+
+        public int k;
+        public double xo;
+        public double yo;
+        public double zo;
+        public RealMatrix ẑ;
+
+        public MeasurementPoint(int k, double x, double y, double z){
+            this.k = k;
+            this.xo = x;
+            this.yo = y;
+            this.zo = z;
+            this.ẑ = MatrixUtils.createRealMatrix(3, 1);
+            ẑ.setColumn(0, new double[]{x,y,z});
+        }
+    }
+
+    public static class ExtrapolateStateVector{
+
+        public int k;
+        public double dρ;
+        public double ϕ0;
+        public double κ;
+        public double dz;
+        public double tanλ;
+        public RealMatrix a;
+        public double pathlength;
+
+        public double x;
+        public double y;
+        public double z;
+        public double px;
+        public double py;
+        public double pz;
+
+        public ExtrapolateStateVector(int k, double dρ, double ϕ0, double κ, double dz, double tanλ, double pathlength, MeasurementPoint m){
+            this.k = k;
+            this.dρ = dρ;
+            this.ϕ0 = ϕ0;
+            this.κ = κ;
+            this.dz = dz;
+            this.tanλ = tanλ;
+            this.pathlength = pathlength;
+            this.a = MatrixUtils.createRealMatrix(5,1);
+            a.setColumn(0, new double[]{dρ,ϕ0,κ,dz,tanλ});
+
+            transformStateVectorToPosAndMom(m);
+        }
+
+        public ExtrapolateStateVector(int k, double x, double y, double z, double px, double py, double pz, double pathlength, MeasurementPoint m){
+            this.k = k;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.px = px;
+            this.py = py;
+            this.pz = pz;
+            this.pathlength = pathlength;
+
+            transformPosAndMomToStateVector(m);
+        }
+
+        private void transformStateVectorToPosAndMom(MeasurementPoint m){
+            double x = m.xo + this.dρ * FastMath.cos(this.ϕ0);
+            double y = m.yo + this.dρ * FastMath.sin(this.ϕ0);
+            double z = m.zo + this.dz;
+            double px = -1./Math.abs(this.κ) * FastMath.sin(this.ϕ0);
+            double py = 1./Math.abs(this.κ) * FastMath.cos(this.ϕ0);
+            double pz = 1./Math.abs(this.κ) * this.tanλ;
+
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.px = px;
+            this.py = py;
+            this.pz = pz;
+        }
+
+        private void transformPosAndMomToStateVector(MeasurementPoint m){
+            double κ = 1./FastMath.sqrt(this.px*this.px + this.py*this.py);
+            double ϕ0 = 0;
+            if (-px*κ < 0) ϕ0 = -Math.acos(py*κ);
+            if (-px*κ > 0) ϕ0 = Math.acos(py*κ);
+            double tanλ = pz*κ;
+            double dz = z-m.zo;
+            double dρ = (y - m.yo) / FastMath.sin(ϕ0);
+            this.a = MatrixUtils.createRealMatrix(5,1);
+            a.setColumn(0, new double[]{dρ,ϕ0,κ,dz,tanλ});
+        }
+    }
+
+    public static class UpdateStateVector{
+        public int k;
+        public double dρ;
+        public double ϕ0;
+        public double κ;
+        public double dz;
+        public double tanλ;
+        public RealMatrix a;
+
+        public double x;
+        public double y;
+        public double z;
+        public double px;
+        public double py;
+        public double pz;
+
+        public UpdateStateVector(int k, double dρ, double ϕ0, double κ, double dz, double tanλ, MeasurementPoint m){
+            this.k = k;
+            this.dρ = dρ;
+            this.ϕ0 = ϕ0;
+            this.κ = κ;
+            this.dz = dz;
+            this.tanλ = tanλ;
+            this.a = MatrixUtils.createRealMatrix(5,1);
+            a.setColumn(0, new double[]{dρ,ϕ0,κ,dz,tanλ});
+
+            transformStateVectorToPosAndMom(m);
+        }
+
+        public UpdateStateVector(int k, double x, double y, double z, double px, double py, double pz, MeasurementPoint m){
+            this.k = k;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.px = px;
+            this.py = py;
+            this.pz = pz;
+
+            transformPosAndMomToStateVector(m);
+        }
+
+        private void transformStateVectorToPosAndMom(MeasurementPoint m){
+            double x = m.xo + this.dρ * FastMath.cos(this.ϕ0);
+            double y = m.yo + this.dρ * FastMath.sin(this.ϕ0);
+            double z = m.zo + this.dz;
+            double px = -1./Math.abs(this.κ) * FastMath.sin(this.ϕ0);
+            double py = 1./Math.abs(this.κ) * FastMath.cos(this.ϕ0);
+            double pz = 1./Math.abs(this.κ) * this.tanλ;
+
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.px = px;
+            this.py = py;
+            this.pz = pz;
+        }
+
+        private void transformPosAndMomToStateVector(MeasurementPoint m){
+            double κ = 1./FastMath.sqrt(this.px*this.px + this.py*this.py);
+            double ϕ0 = 0;
+            if (-px*κ < 0) ϕ0 = -Math.acos(py*κ);
+            if (-px*κ > 0) ϕ0 = Math.acos(py*κ);
+            double tanλ = pz*κ;
+            double dz = z-m.zo;
+            double dρ = (y - m.yo) / FastMath.sin(ϕ0);
+            this.dρ = dρ;
+            this.ϕ0 = ϕ0;
+            this.κ = κ;
+            this.dz = dz;
+            this.tanλ = tanλ;
+            this.a = MatrixUtils.createRealMatrix(5,1);
+            a.setColumn(0, new double[]{dρ,ϕ0,κ,dz,tanλ});
+        }
+
+        public void println(MeasurementPoint m) {
+            System.out.println("UpdateStateVector{" +
+                    "k=" + k +
+                    ", dρ=" + dρ +
+                    ", ϕ0=" + ϕ0 +
+                    ", κ=" + κ +
+                    ", dz=" + dz +
+                    ", tanλ=" + tanλ +
+                    ", x =" + x +
+                    ", y =" + y +
+                    ", z =" + z +
+                    ", px =" + px +
+                    ", py =" + py +
+                    ", pz =" + pz +
+                    ", meas x = " + m.xo +
+                    ", meas y = " + m.yo +
+                    ", meas z = " + m.zo +
+                    '}' + '\n');
+        }
+    }
+
+    public KalmanFilter5Dbackup1(Swim swimmer) {
+        swim = swimmer;
+    }
+
+    public void runKalmanFilter(double[] starting, @NotNull List<Surface> measSurfaces) {
+        boolean debug = true;
+        // Create list MeasurementPoint :
+        int i = 0;
+        List<MeasurementPoint> measPoints = new ArrayList<>();
+        for (Surface meas : measSurfaces) {
+            measPoints.add(new MeasurementPoint(i, meas.refPoint.x(), meas.refPoint.y(), meas.refPoint.z()));
+            i++;
+        }
+
+        // Initialization of the lists :
+        ExtrapolateStateVectors = new ArrayList<>(Collections.nCopies(i, null));
+        UpdateStateVectors = new ArrayList<>(Collections.nCopies(i, null));
+
+        // Initialization of the Kalman Filter :
+        if (debug) System.out.println("Starting : " + Arrays.toString(starting));
+        UpdateStateVector aInit = new UpdateStateVector(0,starting[0],starting[1],starting[2],starting[3],starting[4],starting[5], measPoints.get(0));
+        UpdateStateVectors.set(0,aInit);
+        if (debug) System.out.println("Starting !!!");
+        if (debug) aInit.println(measPoints.get(0));
+
+
+
+        for (int k = 0; k < measPoints.size() - 1; k++){
+            // First Part : Extrapolation
+            // StateVector :
+            double r = Math.hypot(measPoints.get(k+1).xo,measPoints.get(k+1).yo);
+            ExtrapolateStateVector x = f(UpdateStateVectors.get(k),measPoints.get(k),measPoints.get(k+1),r,k+1);
+            ExtrapolateStateVectors.set(k+1, x);
+            // Second Part : Filtering
+            // StateVector :
+            UpdateStateVector a = new UpdateStateVector(k+1,x.x,x.y,x.z,x.px,x.py,x.pz,measPoints.get(k+1));
+            UpdateStateVectors.set(k+1, a);
+            if (debug) a.println(measPoints.get(k+1));
+        }
+
+        if (debug) System.out.println("End !!!");
+    }
+
+    /**
+     * Extrapole an update state vector from k to k+1.
+     * @param a Update state vector at k
+     * @param m Measurement point at k
+     * @param m_prim Measurement point at k+1
+     * @param r radius for the extrapolation
+     * @param k k+1
+     * @return Extrapolate state vector at k+1
+     */
+    private ExtrapolateStateVector f(UpdateStateVector a, MeasurementPoint m, MeasurementPoint m_prim, double r, int k){
+        double xo = a.x/10;
+        double yo = a.y/10;
+        double zo = a.z/10;
+        double pxo = a.px;
+        double pyo = a.py;
+        double pzo = a.pz;
+
+        System.out.println("1 : xà = " + xo + " yo = " + yo + " zo = " + zo + " pxo = " + pxo + " pyo = " + pyo + " pzo = " + pzo);
+
+        swim.SetSwimParameters(xo,yo,zo,pxo,pyo,pzo,ch,stepSize,accuracy);
+
+        double[] swimParams = swim.SwimRho(r/10.);
+
+        System.out.println("2 : "+Arrays.toString(swimParams));
+
+        double x = 0;
+        double y = 0;
+        double z = 0;
+        double px = 0;
+        double py = 0;
+        double pz = 0;
+        double pathlength = 0;
+
+        try{
+            x = swimParams[0]*10;
+            y = swimParams[1]*10;
+            z = swimParams[2]*10;
+            px = swimParams[3];
+            py = swimParams[4];
+            pz = swimParams[5];
+            pathlength = swimParams[6];
+        }
+        catch (NullPointerException e){
+            System.out.println("SwimParams is null");
+            System.exit(1);
+        }
+        return new ExtrapolateStateVector(k,x,y,z,px,py,pz,pathlength,m_prim);
+    }
+
+    @NotNull
+    private RealMatrix Q(double pathLenght, @NotNull RealMatrix a, int medium) {
+
+        double pt = Math.abs(1. / a.getEntry(2,0));
+        double pz = pt * a.getEntry(4,0);
+        double p = Math.sqrt(pt * pt + pz * pz);
+        double mass = 0.93827208816;   // proton mass in GeV/c^2
+        double beta = p / Math.sqrt(p * p + mass * mass); // particle momentum
+
+        // Gas miture for ALERT : 4He-CO2
+        double w_He = 4 * 4.0026 / (4 * 4.0026 + 12.0107 + 2 * 15.999); // fraction by weight of helium
+        double w_C = 12.0107 / (4 * 4.0026 + 12.0107 + 2 * 15.999); // fraction by weight of carbon
+        double w_O = 2 * 15.999 / (4 * 4.0026 + 12.0107 + 2 * 15.999); // fraction by weight of oxygen
+
+        double X0_He = 94.32; // Radiation length in g/cm2 found on https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/helium_gas_He.html
+        double X0_C = 42.7; // Radiation length in g/cm2 found on https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/carbon_amorphous_C.html
+        double X0_O = 34.24; // Radiation length in g/cm2 found on https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/oxygen_gas.html
+
+        double X0 = 0;
+        if (medium == 1) { // GasMixture 0.8He 0.2CO2
+            X0 = 1 / (w_He / X0_He + w_C / X0_C + w_O / X0_O); // radiation length for gas mixture
+        }
+        if (medium == 2) { // Helium
+            X0 =  94.32;
+        }
+
+        if (medium == 3) { // Kapton
+            X0 = 40.58;
+        }
+
+        double sctRMS = 0.0141 / (beta * p) * Math.sqrt(pathLenght / X0) * (1 + 1./9. * Math.log10(pathLenght/X0)); // Lynch-Dahl formula
+
+        double[][] q = {
+                {0, 0, 0, 0, 0},
+                {0, sctRMS * sctRMS * (1 + a.getEntry(4,0) * a.getEntry(4,0)), 0, 0, 0},
+                {0, 0, sctRMS * sctRMS * (a.getEntry(2,0) * a.getEntry(2,0) * a.getEntry(4,0)
+                        * a.getEntry(4,0)), 0, sctRMS * sctRMS * (a.getEntry(2,0) * a.getEntry(4,0)
+                        * (1 + a.getEntry(4,0)*a.getEntry(4,0)))},
+                {0, 0, 0, 0, 0},
+                {0, 0, sctRMS * sctRMS * (a.getEntry(2,0) * a.getEntry(4,0) * (1 + a.getEntry(4,0)
+                        * a.getEntry(4,0))), 0, sctRMS * sctRMS * (1 + a.getEntry(4,0)*a.getEntry(4,0))
+                        * (1 + a.getEntry(4,0) * a.getEntry(4,0))}};
+
+        return MatrixUtils.createRealMatrix(q);
+    }
+
+    @NotNull
+    private RealMatrix h(@NotNull RealMatrix m, @NotNull RealMatrix a){
+        double x0 = m.getEntry(0,0) + a.getEntry(0,0) * Math.cos(a.getEntry(1,0));
+        double y0 = m.getEntry(1,0) + a.getEntry(0,0) * Math.sin(a.getEntry(1,0));
+        double z0 = m.getEntry(2,0) + a.getEntry(3,0);
+
+        RealMatrix h = MatrixUtils.createRealMatrix(3,1);
+        h.setEntry(0,0,x0);
+        h.setEntry(1,0,y0);
+        h.setEntry(2,0,z0);
+
+        return h;
+    }
+
+    @NotNull
+    private RealMatrix H(@NotNull RealMatrix a){
+        double[][] HMat;
+        HMat = new double[][]{{Math.cos(a.getEntry(1,0)),-a.getEntry(0,0)*Math.sin(a.getEntry(1,0)),0.,0.,0.},
+                              {Math.sin(a.getEntry(1,0)),a.getEntry(0,0)*Math.cos(a.getEntry(1,0)),0.,0.,0.},
+                              {0.,0.,0.,1.,0.}
+        };
+        return MatrixUtils.createRealMatrix(HMat);
+    }
+
+}

@@ -378,6 +378,7 @@ public final class Swimmer {
 
 			rholast = Math.hypot(result.getUf()[0], result.getUf()[1]);
 			del = Math.abs(rholast - fixedRho);
+
 			count++;
 			stepSize /= 2;
 		} // while
@@ -412,7 +413,7 @@ public final class Swimmer {
 	 * @param stepSize             the uniform step size in meters.
 	 * @param result upon return, results from the swim including the final state vector [x, y, z, px/p, py/p, pz/p]
 	 */
-	public void swimRho(int charge, double xo, double yo, double zo, double momentum, double theta, double phi,
+	public void swimRhoFixed(int charge, double xo, double yo, double zo, double momentum, double theta, double phi,
 			final double fixedRho, final double accuracy, double sMax, double stepSize, SwimResult result) {
 
 		// normally we swim from small rho to a larger rho cutoff.

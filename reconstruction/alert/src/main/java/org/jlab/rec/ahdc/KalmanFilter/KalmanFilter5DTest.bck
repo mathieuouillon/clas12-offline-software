@@ -1,0 +1,661 @@
+package org.jlab.rec.ahdc.KalmanFilter;
+
+import org.apache.commons.math3.linear.MatrixUtils;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.jetbrains.annotations.NotNull;
+import org.jlab.clas.clas.math.FastMath;
+import org.jlab.clas.swimtools.Swim;
+import org.jlab.clas.tracking.kalmanfilter.Surface;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+public class KalmanFilter5DTest {
+    double B = 5; // magnetic field in Tesla
+    double c = 0.000299792458; // speed of light
+
+    double α = 1 / (B * c);
+
+    public RealMatrix a = MatrixUtils.createRealMatrix(5,1); // {dρ, φ0, κ, dz, tan(λ)}
+    public RealMatrix C = MatrixUtils.createRealMatrix(5,5);
+
+    double stepSize = 20e-6;
+    double accuracy = 5.00 * 1.e-4;
+
+    double xo;
+    double yo;
+    double zo;
+    private double φ0;
+
+    public KalmanFilter5DTest() {
+
+    }
+
+    public void runKalmanFilter(double[] starting, Swim swimmer, @NotNull List<Surface> measSurfaces) {
+
+        // Create list of Point3D of measurement
+        List<RealMatrix> measPoints = new ArrayList<>();
+
+        for (Surface meas : measSurfaces) {
+            RealMatrix m = MatrixUtils.createRealMatrix(3, 1);
+            m.setEntry(0, 0, meas.refPoint.x());
+            m.setEntry(1, 0, meas.refPoint.y());
+            m.setEntry(2, 0, meas.refPoint.z());
+            measPoints.add(m);
+        }
+
+        // Initialization of the state vector and the covariance matrix
+        double x = starting[0];
+        double y = starting[1];
+        double z = starting[2];
+        double px = starting[3];
+        double py = starting[4];
+        double pz = starting[5];
+
+        double phi = Math.atan2(py,px);
+
+        double xo = measPoints.get(0).getEntry(0,0);
+        double yo = measPoints.get(0).getEntry(1,0);
+        double zo = measPoints.get(0).getEntry(2,0);
+
+        this.xo = xo;
+        this.yo = yo;
+        this.zo = zo;
+
+        double κ = 1./Math.hypot(px,py);
+        if ( Math.abs(phi) < Math.PI/2.){κ = -κ;}
+        double φ = Math.acos(py*κ);
+        double tanλ = pz*κ;
+        double dz = z-zo;
+        double dρ = (y-yo)/Math.sin(φ);
+
+        this.φ0 = φ;
+
+        // Initialization of the state vector
+        a.setEntry(0,0,dρ);
+        a.setEntry(1,0,φ);
+        a.setEntry(2,0,κ);
+        a.setEntry(3,0,dz);
+        a.setEntry(4,0,tanλ);
+
+        // Initialization of the covariance matrix
+        for (int i = 0; i < 5; i++){C.setEntry(i,i,1000);}
+
+
+
+        for (int k = 0; k < measSurfaces.size(); k++){
+
+            dρ = a.getEntry(0,0);
+            φ = a.getEntry(1,0);
+            κ = a.getEntry(2,0);
+            dz = a.getEntry(3,0);
+            tanλ = a.getEntry(4,0);
+
+            if (k == 0){φ=0;}
+
+            x = this.xo + dρ*FastMath.cos(this.φ0) + α/κ*(FastMath.cos(this.φ0) - FastMath.cos(this.φ0-φ));
+            y = this.yo + dρ*FastMath.sin(this.φ0) + α/κ*(FastMath.sin(this.φ0) - FastMath.sin(this.φ0-φ));
+            z = this.zo + dz - α/κ*tanλ*φ;
+
+            px = -1./Math.abs(κ)*FastMath.sin(φ0+φ);
+            py = 1./Math.abs(κ)*FastMath.cos(φ0+φ);
+            pz = 1./Math.abs(κ)*tanλ;
+
+            double thx = px/pz;
+            double thy = py/pz;
+            double p = - Math.sqrt(px*px + py*py + pz*pz);
+            int ch = 1; // charge of proton
+
+            System.out.println("beforer x = " + x + " y = " + y + " z = " + z + " px = " + px +" py = " + py + " pz = " + pz);
+            System.out.println("beforer meas x = " + measPoints.get(k).getEntry(0,0) +" y = " + measPoints.get(k).getEntry(1,0)+ " z = " + measPoints.get(k).getEntry(2,0));
+
+
+            swimmer.SetSwimParameters(1,x/10,y/10,z/10,thx,thy,p,ch,stepSize,accuracy);
+
+            double r = Math.hypot(measPoints.get(k+1).getEntry(0,0), measPoints.get(k+1).getEntry(1,0));
+
+            double[] swimPars = swimmer.SwimRho(r / 10.);
+
+            x = swimPars[0] * 10;
+            y = swimPars[1] * 10;
+            z = swimPars[2] * 10;
+            px = swimPars[3];
+            py = swimPars[4];
+            pz = swimPars[5];
+
+            System.out.println("after x = " + x + " y = " + y + " z = " + z + " px = " + px +" py = " + py + " pz = " + pz);
+            System.out.println("after meas x = " + measPoints.get(k+1).getEntry(0,0) +" y = " + measPoints.get(k+1).getEntry(1,0)+ " z = " + measPoints.get(k+1).getEntry(2,0));
+
+            phi = Math.atan2(py,px);
+
+            double fκ = 1./Math.hypot(px,py);
+            if ( Math.abs(phi) < Math.PI/2.){fκ = -fκ;}
+            double ftanλ = pz*Math.abs(fκ);
+            double fφ = Math.acos(py*Math.abs(fκ))-this.φ0;
+            double fdz = z-this.zo+α/κ*tanλ*fφ;
+            double fdρ = (y-this.yo-α/κ*(FastMath.sin(this.φ0) - FastMath.sin(this.φ0-fφ)))/Math.sin(this.φ0);
+
+            a.setEntry(0,0,fdρ);
+            a.setEntry(1,0,fφ);
+            a.setEntry(2,0,fκ);
+            a.setEntry(3,0,fdz);
+            a.setEntry(4,0,ftanλ);
+
+            System.out.println("a = " + a);
+
+        }
+
+
+
+    }
+
+    private double pathLenghtComputed2(double phi1, double phi2){
+        double κ = a.getEntry(2,0);
+        double tanλ = a.getEntry(4,0);
+        double distance = Math.sqrt( (α/κ)*(α/κ)*(tanλ*tanλ + 1))*(phi2-phi1);
+
+        return Math.abs(distance)/10.;
+    }
+
+    private void extrapolation(@NotNull Swim swimmer, @NotNull RealMatrix measPoint2, int direction){
+
+        double dρ = a.getEntry(0,0);
+        double φ0 = a.getEntry(1,0);
+        double κ = a.getEntry(2,0);
+        double dz = a.getEntry(3,0);
+        double tanλ = a.getEntry(4,0);
+
+        double [] params = new double[] {dρ, φ0, κ, dz, tanλ};
+
+        swimParameters(swimmer, params, direction);
+
+        double[] fparams = swimToR(swimmer, measPoint2);
+
+        double fdρ = fparams[0];
+        double fφ0 = fparams[1];
+        double fκ = fparams[2];
+        double fdz = fparams[3];
+        double ftanλ = fparams[4];
+
+        // fκ = energyLossInGasMixture(fκ,pathLenghtComputed2(params[1],fparams[1]),1);
+        // fparams[2] = fκ;
+
+        // Set the state vector parameters
+        a.setEntry(0,0,fdρ);
+        a.setEntry(1,0,fφ0);
+        a.setEntry(2,0,fκ);
+        a.setEntry(3,0,fdz);
+        a.setEntry(4,0,ftanλ);
+
+        extrapolationCovarianceMatrix(params, fparams,1);
+
+        System.out.println("extrapolated a = " + a);
+
+    }
+
+    private void swimParameters(@NotNull Swim swimmer, @NotNull double[] params, int direction){
+        double dρ = params[0];
+        double φ0 = params[1];
+        double κ = params[2];
+        double dz = params[3];
+        double tanλ = params[4];
+
+        double x = xo + dρ*FastMath.cos(φ0);
+        double y = yo + dρ*FastMath.sin(φ0);
+        double z = zo + dz;
+
+        double px = -1./Math.abs(κ)*FastMath.sin(φ0);
+        double py = 1./Math.abs(κ)*FastMath.cos(φ0);
+        double pz = 1./Math.abs(κ)*tanλ;
+
+        double thx = px/pz;
+        double thy = py/pz;
+        double p = - Math.sqrt(px*px + py*py + pz*pz);
+        int ch = 1; // charge of proton
+
+        swimmer.SetSwimParameters(direction,x/10,y/10,z/10,thx,thy,p,ch,stepSize,accuracy);
+
+    }
+
+    private double[] swimToR(@NotNull Swim swimmer, @NotNull RealMatrix measPoint){
+
+        double xo_prim = measPoint.getEntry(0,0);
+        double yo_prim = measPoint.getEntry(1,0);
+        double zo_prim = measPoint.getEntry(2,0);
+
+        double r = Math.hypot(xo_prim, yo_prim);
+
+        double[] swimPars = swimmer.SwimRho(r / 10.);
+
+        double x = swimPars[0] * 10;
+        double y = swimPars[1] * 10;
+        double z = swimPars[2] * 10;
+        double px = swimPars[3];
+        double py = swimPars[4];
+        double pz = swimPars[5];
+
+        double phi = Math.atan2(py,px);
+
+        double fκ = 1./Math.hypot(px,py);
+        if ( Math.abs(phi) < Math.PI/2.){fκ = -fκ;}
+        double fφ0 = Math.acos(py*fκ);
+        double ftanλ = pz*fκ;
+        double fdz = z-zo;
+        double fdρ = (y-yo)/Math.sin(fφ0);
+
+        return new double[] {fdρ, fφ0, fκ, fdz, ftanλ};
+
+    }
+
+    private void extrapolationCovarianceMatrix(@NotNull double[] params, @NotNull double[] fparams, int medium){
+        double dρ = params[0];
+        double φ0 = params[1];
+        double κ = params[2];
+        double dz = params[3];
+        double tanλ = params[4];
+
+        double fdρ = fparams[0];
+        double fφ0 = fparams[1];
+        double fκ = fparams[2];
+        double fdz = fparams[3];
+        double ftanλ = fparams[4];
+
+        double dphi0_prm_del_drho = -1. / (fdρ + α / κ) * Math.sin(fφ0 - φ0);
+        double dphi0_prm_del_phi0 = (dρ + α / κ) / (fdρ + α / κ) * Math.cos(fφ0 - φ0);
+        double dphi0_prm_del_kappa = (α / (κ*κ)) / (fdρ + α / κ) * Math.sin(fφ0 - φ0);
+        double dphi0_prm_del_dz = 0;
+        double dphi0_prm_del_tanL = 0;
+
+        double drho_prm_del_drho = Math.cos(fφ0 - φ0);
+        double drho_prm_del_phi0 = (dρ + α / κ) * Math.sin(fφ0 - φ0);
+        double drho_prm_del_kappa = (α / (κ*κ)) * (1 - Math.cos(fφ0 - φ0));
+        double drho_prm_del_dz = 0;
+        double drho_prm_del_tanL = 0;
+
+        double dkappa_prm_del_drho = 0;
+        double dkappa_prm_del_phi0 = 0;
+        double dkappa_prm_del_dkappa = 1;
+        double dkappa_prm_del_dz = 0;
+        double dkappa_prm_del_tanL = 0;
+
+        double dz_prm_del_drho = ((α / κ) / (fdρ + α / κ)) * tanλ * Math.sin(fφ0 - φ0);
+        double dz_prm_del_phi0 = (α / κ) * tanλ * (1 - Math.cos(fφ0 - φ0) * (fdρ + (α / κ)) / (fdρ + (α / κ)));
+        double dz_prm_del_kappa = (α / (κ*κ)) * tanλ * (fφ0 - φ0 - Math.sin(fφ0 - φ0) * (α / κ) / (fdρ + α / κ));
+        double dz_prm_del_dz = 1;
+        double dz_prm_del_tanL = -α * (fφ0 - φ0) / κ;
+
+        double dtanL_prm_del_drho = 0;
+        double dtanL_prm_del_phi0 = 0;
+        double dtanL_prm_del_dkappa = 0;
+        double dtanL_prm_del_dz = 0;
+        double dtanL_prm_del_tanL = 1;
+
+        double[][] FMat = new double[][]{
+                {drho_prm_del_drho, drho_prm_del_phi0, drho_prm_del_kappa, drho_prm_del_dz, drho_prm_del_tanL},
+                {dphi0_prm_del_drho, dphi0_prm_del_phi0, dphi0_prm_del_kappa, dphi0_prm_del_dz, dphi0_prm_del_tanL},
+                {dkappa_prm_del_drho, dkappa_prm_del_phi0, dkappa_prm_del_dkappa, dkappa_prm_del_dz, dkappa_prm_del_tanL},
+                {dz_prm_del_drho, dz_prm_del_phi0, dz_prm_del_kappa, dz_prm_del_dz, dz_prm_del_tanL},
+                {dtanL_prm_del_drho, dtanL_prm_del_phi0, dtanL_prm_del_dkappa, dtanL_prm_del_dz, dtanL_prm_del_tanL}
+        };
+
+        RealMatrix F = MatrixUtils.createRealMatrix(FMat);
+        RealMatrix Q = Q(pathLenghtComputed2(φ0,fφ0),medium);
+        C = ((F.multiply(C)).multiply(F.transpose())).add(Q);
+
+    }
+
+    private void update(RealMatrix measPoint){
+        RealMatrix h = h(measPoint);
+        RealMatrix r = measPoint.subtract(h); // measurement residual
+        RealMatrix H = H();
+
+        System.out.println("residual = " + r);
+
+        RealMatrix G = MatrixUtils.createRealIdentityMatrix(3).scalarMultiply(10);
+        C = MatrixUtils.inverse(MatrixUtils.inverse(C).add(((H.transpose()).multiply(G)).multiply(H)));
+
+        RealMatrix K = C.multiply(H.transpose().multiply(G));
+        System.out.println("K = " + K);
+        System.out.println("Kr = " + K.multiply(r));
+        a = a.add(K.multiply(r));
+
+        System.out.println("update a = " + a);
+    }
+
+    @NotNull
+    private RealMatrix Q(double pathLenght, int medium) {
+
+        double pt = Math.abs(1. / a.getEntry(2,0));
+        double pz = pt * a.getEntry(4,0);
+        double p = Math.sqrt(pt * pt + pz * pz);
+        double mass = 0.93827208816;   // proton mass in GeV/c^2
+        double beta = p / Math.sqrt(p * p + mass * mass); // particle momentum
+
+        // Gas miture for ALERT : 4He-CO2
+        double w_He = 4 * 4.0026 / (4 * 4.0026 + 12.0107 + 2 * 15.999); // fraction by weight of helium
+        double w_C = 12.0107 / (4 * 4.0026 + 12.0107 + 2 * 15.999); // fraction by weight of carbon
+        double w_O = 2 * 15.999 / (4 * 4.0026 + 12.0107 + 2 * 15.999); // fraction by weight of oxygen
+
+        double X0_He = 94.32; // Radiation length in g/cm2 found on https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/helium_gas_He.html
+        double X0_C = 42.7; // Radiation length in g/cm2 found on https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/carbon_amorphous_C.html
+        double X0_O = 34.24; // Radiation length in g/cm2 found on https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/oxygen_gas.html
+
+        double X0 = 0;
+        if (medium == 1) { // GasMixture 0.8He 0.2CO2
+            X0 = 1 / (w_He / X0_He + w_C / X0_C + w_O / X0_O); // radiation length for gas mixture
+        }
+        if (medium == 2) { // Helium
+            X0 =  94.32;
+        }
+
+        if (medium == 3) { // Kapton
+            X0 = 40.58;
+        }
+
+        double sctRMS = 0.0141 / (beta * p) * Math.sqrt(pathLenght / X0) * (1 + 1./9. * Math.log10(pathLenght/X0)); // Lynch-Dahl formula
+
+        double[][] q = {
+                {0, 0, 0, 0, 0},
+                {0, sctRMS * sctRMS * (1 + a.getEntry(4,0) * a.getEntry(4,0)), 0, 0, 0},
+                {0, 0, sctRMS * sctRMS * (a.getEntry(2,0) * a.getEntry(2,0) * a.getEntry(4,0)
+                        * a.getEntry(4,0)), 0, sctRMS * sctRMS * (a.getEntry(2,0) * a.getEntry(4,0)
+                        * (1 + a.getEntry(4,0)*a.getEntry(4,0)))},
+                {0, 0, 0, 0, 0},
+                {0, 0, sctRMS * sctRMS * (a.getEntry(2,0) * a.getEntry(4,0) * (1 + a.getEntry(4,0)
+                        * a.getEntry(4,0))), 0, sctRMS * sctRMS * (1 + a.getEntry(4,0)*a.getEntry(4,0))
+                        * (1 + a.getEntry(4,0) * a.getEntry(4,0))}};
+
+        return MatrixUtils.createRealMatrix(q);
+    }
+
+    @NotNull
+    private RealMatrix h(@NotNull RealMatrix m){
+        double x0 = m.getEntry(0,0) + a.getEntry(0,0) * Math.cos(a.getEntry(1,0));
+        double y0 = m.getEntry(1,0) + a.getEntry(0,0) * Math.sin(a.getEntry(1,0));
+        double z0 = m.getEntry(2,0) + a.getEntry(3,0);
+
+        RealMatrix h = MatrixUtils.createRealMatrix(3,1);
+        h.setEntry(0,0,x0);
+        h.setEntry(1,0,y0);
+        h.setEntry(2,0,z0);
+
+        return h;
+    }
+
+    @NotNull
+    private RealMatrix H(){
+        double[][] HMat;
+        HMat = new double[][]{{Math.cos(a.getEntry(1,0)),-a.getEntry(0,0)*Math.sin(a.getEntry(1,0)),0.,0.,0.},
+                              {Math.sin(a.getEntry(1,0)),a.getEntry(0,0)*Math.cos(a.getEntry(1,0)),0.,0.,0.},
+                              {0.,0.,0.,1.,0.}
+        };
+        return MatrixUtils.createRealMatrix(HMat);
+    }
+
+    private void Initialization(@NotNull double[] starting, @NotNull RealMatrix measPoint){
+
+        double x = starting[0];
+        double y = starting[1];
+        double z = starting[2];
+        double px = starting[3];
+        double py = starting[4];
+        double pz = starting[5];
+
+        double phi = Math.atan2(py,px);
+
+        double xo = measPoint.getEntry(0,0);
+        double yo = measPoint.getEntry(1,0);
+        double zo = measPoint.getEntry(2,0);
+
+        this.xo = xo;
+        this.yo = yo;
+        this.zo = zo;
+
+        double κ = 1./Math.hypot(px,py);
+        if ( Math.abs(phi) < Math.PI/2.){κ = -κ;}
+        double φ0 = Math.acos(py*κ);
+        double tanλ = pz*κ;
+        double dz = z-zo;
+        double dρ = (y-yo)/Math.sin(φ0);
+
+        // Initialization of the state vector
+        a.setEntry(0,0,dρ);
+        a.setEntry(1,0,φ0);
+        a.setEntry(2,0,κ);
+        a.setEntry(3,0,dz);
+        a.setEntry(4,0,tanλ);
+
+
+        // Initialization of the covariance matrix
+/*        C.setEntry(0,0,dρ*dρ);
+        C.setEntry(1,0,dρ*φ0);
+        C.setEntry(0,1,dρ*φ0);
+        C.setEntry(2,0,dρ*κ);
+        C.setEntry(0,2,dρ*κ);
+        C.setEntry(2,1,φ0*κ);
+        C.setEntry(1,2,φ0*κ);
+        C.setEntry(1,1,φ0*φ0);
+        C.setEntry(2,2,κ*κ);
+        C.setEntry(3,3,dz*dz);
+        C.setEntry(3,4,tanλ*dz);
+        C.setEntry(4,3,tanλ*dz);
+        C.setEntry(4,4,tanλ*tanλ);*/
+
+        for (int i = 0; i < 5; i++){C.setEntry(i,i,1000);}
+
+
+    }
+
+    private double energyLossInKapton(double κ, double pathLenght, int direction){
+
+        double ΔE = -1.187E+02*1.42000E+00*pathLenght/1000;
+        if (direction == -1){ΔE = -ΔE;}
+
+        double pt = Math.abs(1. / a.getEntry(2,0)); // GeV
+        double pz = pt * a.getEntry(4,0); // GeV
+        double p = Math.sqrt(pt * pt + pz * pz); // Gev
+
+        double E = Math.sqrt(p*p + 0.938*0.938);
+
+        double κ_prim = κ*(p/Math.sqrt(p*p+2*E*ΔE+ΔE*ΔE));
+
+        return κ_prim;
+    }
+
+    private double energyLossInHelium(double κ, double pathLenght, int direction){
+        double MHe= 4.0026;
+        double rhoHelium = 5*101325*MHe/(8.31446261815324*293.15)*1e-6;
+        double ΔE = -1.360E+02*rhoHelium*pathLenght/1000;
+        if (direction == -1){ΔE = -ΔE;}
+
+        double pt = Math.abs(1. / a.getEntry(2,0)); // GeV
+        double pz = pt * a.getEntry(4,0); // GeV
+        double p = Math.sqrt(pt * pt + pz * pz); // Gev
+
+        double E = Math.sqrt(p*p + 0.938*0.938);
+
+        double κ_prim = κ*(p/Math.sqrt(p*p+2*E*ΔE+ΔE*ΔE));
+
+        return κ_prim;
+    }
+
+    private double energyLossInGasMixture(double κ, double pathLenghtGas, int direction){
+
+        double Mavg = 0.2*44.01+0.8*4.0026;
+        double rhoGasMixture = 101325*Mavg/(8.31446261815324*293.15)*1e-6;
+
+        double A_He = 4.002602; // atomic mass g mol-1
+        double A_C = 12.0107; // g mol-1 found on https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/carbon_amorphous_C.html
+        double A_O = 15.999; // g mol-1 found on https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/oxygen_gas.html
+
+        double w_He = 0.8 * A_He / (0.8 * A_He + 0.2 * (A_C + 2 * A_O)); // weight fraction of the 1th element (helium)
+        double w_CO2 = 0.2 * (A_C + 2 * A_O) / (0.8 * A_He + 0.2 * (A_C + 2 * A_O)); // weight fraction of the 2th element (CO2)
+
+        double ΔE = -(w_CO2*1.136E+02 + w_He*1.360E+02)*rhoGasMixture * pathLenghtGas/1000; //GeV g cm-2
+        if (direction == -1){ΔE = -ΔE;}
+        double pt = Math.abs(1. / a.getEntry(2,0)); // GeV
+        double pz = pt * a.getEntry(4,0); // GeV
+        double p = Math.sqrt(pt * pt + pz * pz); // Gev
+
+        double E = Math.sqrt(p*p + 0.938*0.938);
+
+        double κ_prim = κ*(p/Math.sqrt(p*p+2*E*ΔE+ΔE*ΔE));
+
+        return κ_prim;
+    }
+
+    private void println(@NotNull RealMatrix measPoint){
+        double dρ = a.getEntry(0,0);
+        double φ0 = a.getEntry(1,0);
+        double κ = a.getEntry(2,0);
+        double dz = a.getEntry(3,0);
+        double tanλ = a.getEntry(4,0);
+
+        double x0 = this.xo + dρ * Math.cos(φ0);
+        double y0 = this.yo + dρ * Math.sin(φ0);
+        double z0 = this.zo + dz;
+
+        System.out.println("Calc x = " + x0 + " y = " + y0 + " z = " + z0);
+        System.out.println("Meas x = " + measPoint.getEntry(0,0)
+                + " y = " + measPoint.getEntry(1,0)
+                + " z = " + measPoint.getEntry(2,0));
+        double px = -1./ Math.abs(κ)*Math.sin(φ0);
+        double py = 1./Math.abs(κ)*Math.cos(φ0);
+        double pt = Math.abs(1. / a.getEntry(2,0));
+        double pz = pt * a.getEntry(4,0);
+        double p = Math.sqrt(pt * pt + pz * pz); // in MeV
+
+        System.out.println("p = " + p + " px = " + px + " py = " + py + " pz = " + pz);
+    }
+
+    /*
+    private void Initialization(@NotNull double[] starting, @NotNull RealMatrix measPoint){
+
+        double x = starting[0];
+        double y = starting[1];
+        double z = starting[2];
+        double px = starting[3];
+        double py = starting[4];
+        double pz = starting[5];
+
+        double xo = measPoint.getEntry(0,0);
+        double yo = measPoint.getEntry(1,0);
+        double zo = measPoint.getEntry(2,0);
+
+        double κ = 1./Math.hypot(px,py);
+
+        double φ0 = Math.acos(py*κ);
+        double tanλ = pz*κ;
+        double dz = z-zo;
+        double dρ = (y-yo)/Math.sin(φ0);
+
+        // Initialization of the state vector
+        a.setEntry(0,0,dρ);
+        a.setEntry(1,0,φ0);
+        a.setEntry(2,0,κ);
+        a.setEntry(3,0,dz);
+        a.setEntry(4,0,tanλ);
+
+
+        // Initialization of the covariance matrix
+/*        C.setEntry(0,0,dρ*dρ);
+        C.setEntry(1,0,dρ*φ0);
+        C.setEntry(0,1,dρ*φ0);
+        C.setEntry(2,0,dρ*κ);
+        C.setEntry(0,2,dρ*κ);
+        C.setEntry(2,1,φ0*κ);
+        C.setEntry(1,2,φ0*κ);
+        C.setEntry(1,1,φ0*φ0);
+        C.setEntry(2,2,κ*κ);
+        C.setEntry(3,3,dz*dz);
+        C.setEntry(3,4,tanλ*dz);
+        C.setEntry(4,3,tanλ*dz);
+        C.setEntry(4,4,tanλ*tanλ);
+
+        for (int i = 0; i < 5; i++){C.setEntry(i,i,1000);}
+
+
+    }
+
+    private double energyLossInKapton(double κ, double pathLenght, int direction){
+
+        double ΔE = -1.187E+02*1.42000E+00*pathLenght/1000;
+        if (direction == -1){ΔE = -ΔE;}
+
+        double pt = Math.abs(1. / a.getEntry(2,0)); // GeV
+        double pz = pt * a.getEntry(4,0); // GeV
+        double p = Math.sqrt(pt * pt + pz * pz); // Gev
+
+        double E = Math.sqrt(p*p + 0.938*0.938);
+
+        double κ_prim = κ*(p/Math.sqrt(p*p+2*E*ΔE+ΔE*ΔE));
+
+        return κ_prim;
+    }
+
+    private double energyLossInHelium(double κ, double pathLenght, int direction){
+        double MHe= 4.0026;
+        double rhoHelium = 5*101325*MHe/(8.31446261815324*293.15)*1e-6;
+        double ΔE = -1.360E+02*rhoHelium*pathLenght/1000;
+        if (direction == -1){ΔE = -ΔE;}
+
+        double pt = Math.abs(1. / a.getEntry(2,0)); // GeV
+        double pz = pt * a.getEntry(4,0); // GeV
+        double p = Math.sqrt(pt * pt + pz * pz); // Gev
+
+        double E = Math.sqrt(p*p + 0.938*0.938);
+
+        double κ_prim = κ*(p/Math.sqrt(p*p+2*E*ΔE+ΔE*ΔE));
+
+        return κ_prim;
+    }
+
+    private double energyLossInGasMixture(double κ, double pathLenghtGas, int direction){
+
+        double Mavg = 0.2*44.01+0.8*4.0026;
+        double rhoGasMixture = 101325*Mavg/(8.31446261815324*293.15)*1e-6;
+
+        double A_He = 4.002602; // atomic mass g mol-1
+        double A_C = 12.0107; // g mol-1 found on https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/carbon_amorphous_C.html
+        double A_O = 15.999; // g mol-1 found on https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/oxygen_gas.html
+
+        double w_He = 0.8 * A_He / (0.8 * A_He + 0.2 * (A_C + 2 * A_O)); // weight fraction of the 1th element (helium)
+        double w_CO2 = 0.2 * (A_C + 2 * A_O) / (0.8 * A_He + 0.2 * (A_C + 2 * A_O)); // weight fraction of the 2th element (CO2)
+
+        double ΔE = -(w_CO2*1.136E+02 + w_He*1.360E+02)*rhoGasMixture * pathLenghtGas/1000; //GeV g cm-2
+        if (direction == -1){ΔE = -ΔE;}
+        double pt = Math.abs(1. / a.getEntry(2,0)); // GeV
+        double pz = pt * a.getEntry(4,0); // GeV
+        double p = Math.sqrt(pt * pt + pz * pz); // Gev
+
+        double E = Math.sqrt(p*p + 0.938*0.938);
+
+        double κ_prim = κ*(p/Math.sqrt(p*p+2*E*ΔE+ΔE*ΔE));
+
+        return κ_prim;
+    }
+
+    private void println(@NotNull RealMatrix measPoint){
+        double dρ = a.getEntry(0,0);
+        double φ0 = a.getEntry(1,0);
+        double κ = a.getEntry(2,0);
+        double dz = a.getEntry(3,0);
+        double tanλ = a.getEntry(4,0);
+
+        double x0 = measPoint.getEntry(0,0) + dρ * Math.cos(φ0);
+        double y0 = measPoint.getEntry(1,0) + dρ * Math.sin(φ0);
+        double z0 = measPoint.getEntry(2,0) + dz;
+
+        System.out.println("Calc x = " + x0 + " y = " + y0 + " z = " + z0);
+
+        double x = measPoint.getEntry(0,0);
+        double y = measPoint.getEntry(1,0);
+        double z = measPoint.getEntry(2,0);
+
+        System.out.println("Meas x = " + x + " y = " + y + " z = " + z);
+
+    }
+    */
+
+}
