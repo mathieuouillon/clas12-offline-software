@@ -14,8 +14,6 @@ import java.util.List;
 
 public class AHDCReconstruction extends ReconstructionEngine {
 
-    int i = 0;
-
     public AHDCReconstruction() {
         super("ALERT", "ouillon", "0.0.1");
     }

@@ -301,9 +301,19 @@ public class KalmanFilter {
 
             }
 
+            extrapolateStateVectors.clear();
+            extrapolateCovarianceMatrices.clear();
+            updateStateVectors.clear();
+            updateCovarianceMatrices.clear();
+            Fs.clear();
+
+            extrapolateStateVectors.add(null);
+            extrapolateCovarianceMatrices.add(null);
+            Fs.add(null);
             UpdateStateVector first = new UpdateStateVector(smoothStateVectors.get(0).q, measurementPoints.get(0),swim);
-            updateStateVectors.set(0,first);
-            updateCovarianceMatrices.set(0,smoothedCovarianceMatrices.get(0));
+            updateStateVectors.add(first);
+            updateCovarianceMatrices.add(smoothedCovarianceMatrices.get(0));
+
         }
 
 
