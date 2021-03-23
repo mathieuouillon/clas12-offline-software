@@ -76,14 +76,14 @@ public class AHDCReconstruction extends ReconstructionEngine {
             HelixFitJava h = new HelixFitJava();
             HelixFitObject ho = h.HelixFit(nbofpoint, szPos, 0);
 
-            trueHitList.add(0,new TrueHit(2212,ho.get_X0(),ho.get_Y0(), ho.get_Z0(),0));
+            trueHitList.add(0, new TrueHit(2212, ho.get_X0(), ho.get_Y0(), ho.get_Z0(), 0));
 
 
             // Kalman Filter
-            double[] starting = {ho.get_X0(),ho.get_Y0(), ho.get_Z0(), ho.get_px() / 1000, ho.get_py() / 1000, ho.get_pz() / 1000};
-            if(ho.get_Mom() > 70. && ho.get_Mom() < 120. && Math.abs(starting[5]) < 0.07 ) {
-                 KalmanFilter kf = new KalmanFilter(swimmer);
-                 kf.runKalmanFilter(starting,recUtil.setMeasVecsGeant4(trueHitList),ho.get_Mom(),ho.get_Phi(),ho.get_Theta());
+            double[] starting = {ho.get_X0(), ho.get_Y0(), ho.get_Z0(), ho.get_px() / 1000, ho.get_py() / 1000, ho.get_pz() / 1000};
+            if (ho.get_Mom() > 70. && ho.get_Mom() < 120. && Math.abs(starting[5]) < 0.07) {
+                KalmanFilter kf = new KalmanFilter(swimmer);
+                kf.runKalmanFilter(starting, recUtil.setMeasVecsGeant4(trueHitList), ho.get_Mom(), ho.get_Phi(), ho.get_Theta());
             }
         }
 

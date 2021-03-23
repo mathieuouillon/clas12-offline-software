@@ -165,11 +165,14 @@ public class KalmanFilter {
 
         initializationStateVectorAndCovarianceMatrix(positionAndMomentumFromHelixFit);
 
-        double measurement_error = 0.01;
+        double measurement_error = 1;
 
-        for (int nbofiteration = 0; nbofiteration < 5; nbofiteration++) {
+        for (int iteration = 0; iteration < 5; iteration++) {
 
             if (debug) System.out.println("Extrapolation and Filtering : ");
+
+            if (debug) System.out.println("First one ");
+            if (debug) printUpdateStateVector(updateStateVectors.get(0));
 
             for (int k = 0; k < measurementPoints.size() - 1; k++) {
 
@@ -187,6 +190,9 @@ public class KalmanFilter {
                     RealMatrix F = F(q_hat, q_hat_minus);
                     RealMatrix Q = Q(q_hat, q_hat_minus, 0);
                     RealMatrix C_minus = (F.multiply(C).multiply(F.transpose())).add(Q);
+
+                    //Energy loss :
+                    energyLossInDeuterium(q_hat_minus);
 
                     extrapolateStateVectors.add(q_hat_minus);
                     extrapolateCovarianceMatrices.add(C_minus);
@@ -208,6 +214,9 @@ public class KalmanFilter {
                     F = F(q_hat, q_hat_minus);
                     Q = Q(q_hat, q_hat_minus, 1);
                     C_minus = (F.multiply(C).multiply(F.transpose())).add(Q);
+
+                    //Energy loss :
+                    energyLossInKapton(q_hat_minus);
 
                     extrapolateStateVectors.add(q_hat_minus);
                     extrapolateCovarianceMatrices.add(C_minus);
@@ -234,6 +243,9 @@ public class KalmanFilter {
                 RealMatrix F = F(q_hat, q_hat_minus);
                 RealMatrix Q = Q(q_hat, q_hat_minus, 2);
                 RealMatrix C_minus = (F.multiply(C).multiply(F.transpose())).add(Q);
+
+                // Energy loss :
+                energyLossInGasMixture(q_hat_minus);
 
                 extrapolateCovarianceMatrices.add(C_minus);
                 extrapolateStateVectors.add(q_hat_minus);
@@ -301,9 +313,18 @@ public class KalmanFilter {
 
             }
 
+            extrapolateStateVectors.clear();
+            extrapolateCovarianceMatrices.clear();
+            updateStateVectors.clear();
+            extrapolateCovarianceMatrices.clear();
+            Fs.clear();
+
+            extrapolateStateVectors.add(null);
+            extrapolateCovarianceMatrices.add(null);
+            Fs.add(null);
             UpdateStateVector first = new UpdateStateVector(smoothStateVectors.get(0).q, measurementPoints.get(0),swim);
-            updateStateVectors.set(0,first);
-            updateCovarianceMatrices.set(0,smoothedCovarianceMatrices.get(0));
+            updateStateVectors.add(first);
+            updateCovarianceMatrices.add(smoothedCovarianceMatrices.get(0));
         }
 
 
@@ -364,7 +385,7 @@ public class KalmanFilter {
         C.setEntry(4, 4, tanL * tanL);
         */
 
-        RealMatrix C = MatrixUtils.createRealIdentityMatrix(5).scalarMultiply(0.01);
+        RealMatrix C = MatrixUtils.createRealIdentityMatrix(5).scalarMultiply(0.1);
         updateCovarianceMatrices.add(C);
 
 
@@ -413,8 +434,8 @@ public class KalmanFilter {
 
     private ExtrapolateStateVector f(UpdateStateVector q, MeasurementPoint m, MeasurementPoint m_prim) {
 
-        double accuracy = 1e-7;
-        double stepSize = 1e-5;
+        double accuracy = 1e-8;
+        double stepSize = 1e-6;
 
         double xo = m.xo + q.d_rho() * Math.cos(q.phi_0());
         double yo = m.yo + q.d_rho() * Math.sin(q.phi_0());
