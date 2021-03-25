@@ -18,17 +18,22 @@ public class KalmanFilter {
 
     boolean debug = false;
     boolean debug1 = false;
+    boolean energyLoss = false;
 
     RealMatrixFormat TABLE_FORMAT = new RealMatrixFormat("", "", "", "\n", "", ", ");
 
     Swim swim;
 
     List<MeasurementPoint> measurementPoints = new ArrayList<>();
+
+    List<RealMatrix> Fs = new ArrayList<>();
+
     List<ExtrapolateStateVector> extrapolateStateVectors = new ArrayList<>();
     List<RealMatrix> extrapolateCovarianceMatrices = new ArrayList<>();
+
     List<UpdateStateVector> updateStateVectors = new ArrayList<>();
     List<RealMatrix> updateCovarianceMatrices = new ArrayList<>();
-    List<RealMatrix> Fs = new ArrayList<>();
+
     List<SmoothStateVector> smoothStateVectors;
     List<RealMatrix> smoothedCovarianceMatrices;
 
@@ -167,42 +172,90 @@ public class KalmanFilter {
 
         double measurement_error = 0.1;
 
-        for (int iteration = 0; iteration < 5; iteration++) {
+        int numberOfIteration = 3;
 
-            if (debug) System.out.println("Extrapolation and Filtering : ");
+        for (int iteration = 0; iteration < numberOfIteration; iteration++) {
 
-            if (debug) System.out.println("First one ");
-            if (debug) printUpdateStateVector(updateStateVectors.get(0));
+            if (debug) {
+                System.out.println("Extrapolation and Filtering : ");
+                printUpdateStateVector(updateStateVectors.get(0));
+            }
 
             for (int k = 0; k < measurementPoints.size() - 1; k++) {
 
                 if (debug) System.out.println("k = " + k);
 
-                UpdateStateVector q_hat = updateStateVectors.get(k);
-                RealMatrix C = updateCovarianceMatrices.get(k);
+                if (k == 0) {
+                    UpdateStateVector q_hat = updateStateVectors.get(k);
+                    RealMatrix C = updateCovarianceMatrices.get(k);
+                    MeasurementPoint m = q_hat.m;
+
+                    // Extrapolation part :
+                    ExtrapolateStateVector q_hat_minus = f(q_hat, m, 3.0000);
+
+                    // Energy loss :
+                    if (energyLoss) energyLossInDeuterium(q_hat_minus);
+
+                    RealMatrix F = F(q_hat, q_hat_minus);
+                    RealMatrix Q = Q(q_hat, q_hat_minus, 0);
+                    RealMatrix C_minus = (F.multiply(C).multiply(F.transpose())).add(Q);
+
+                    extrapolateStateVectors.add(q_hat_minus);
+                    extrapolateCovarianceMatrices.add(C_minus);
+                    Fs.add(F);
+
+                    updateStateVectors.add(new UpdateStateVector(q_hat_minus.q, q_hat_minus.m, swim));
+                    updateCovarianceMatrices.add(C_minus);
+
+                    if (debug) printUpdateStateVector(new UpdateStateVector(q_hat_minus.q, q_hat_minus.m, swim));
+
+                    q_hat = updateStateVectors.get(k + 1);
+                    C = updateCovarianceMatrices.get(k+1);
+                    m = q_hat.m;
+
+                    // Extrapolation part :
+                    q_hat_minus = f(q_hat, m, 3.0600);
+
+                    // Energy loss :
+                    if (energyLoss) energyLossInKapton(q_hat_minus);
+
+                    F = F(q_hat, q_hat_minus);
+                    Q = Q(q_hat, q_hat_minus, 1);
+                    C_minus = (F.multiply(C).multiply(F.transpose())).add(Q);
+
+                    extrapolateStateVectors.add(q_hat_minus);
+                    extrapolateCovarianceMatrices.add(C_minus);
+                    Fs.add(F);
+
+                    updateStateVectors.add(new UpdateStateVector(q_hat_minus.q, q_hat_minus.m, swim));
+                    updateCovarianceMatrices.add(C_minus);
+
+                    if (debug) printUpdateStateVector(new UpdateStateVector(q_hat_minus.q, q_hat_minus.m, swim));
+                }
+
+
+                UpdateStateVector q_hat = updateStateVectors.get(k + 2);
+                RealMatrix C = updateCovarianceMatrices.get(k + 2);
                 MeasurementPoint m = q_hat.m;
                 MeasurementPoint m_prim = measurementPoints.get(k + 1);
 
                 // Extrapolation part :
-                // ExtrapolateStateVector q_hat_minus = f(q_hat, m, m_prim);
-                ExtrapolateStateVector q_hat_minus = f1(q_hat, m, m_prim);
+                ExtrapolateStateVector q_hat_minus = f(q_hat, m, m_prim);
+
+                // Energy loss :
+                if (energyLoss) energyLossInGasMixture(q_hat_minus);
+
                 RealMatrix F = F(q_hat, q_hat_minus);
                 RealMatrix Q = Q(q_hat, q_hat_minus, 2);
                 RealMatrix C_minus = (F.multiply(C).multiply(F.transpose())).add(Q);
 
-                // Energy loss :
-                // energyLossInGasMixture(q_hat_minus,1);
-
-                extrapolateCovarianceMatrices.add(C_minus);
                 extrapolateStateVectors.add(q_hat_minus);
+                extrapolateCovarianceMatrices.add(C_minus);
                 Fs.add(F);
 
-
                 // Update part :
-                // RealMatrix h = h(q_hat_minus);
-                RealMatrix h = h1(q_hat_minus);
-                // RealMatrix H = H(q_hat, m, m_prim);
-                RealMatrix H = H1(q_hat, m, m_prim);
+                RealMatrix h = h(q_hat_minus);
+                RealMatrix H = H(q_hat, m, m_prim);
                 RealMatrix y = m_prim.m.subtract(h);
                 RealMatrix R = MatrixUtils.createRealIdentityMatrix(3).scalarMultiply(measurement_error);
                 RealMatrix S = (H.multiply(C_minus).multiply(H.transpose())).add(R);
@@ -215,10 +268,8 @@ public class KalmanFilter {
 
                 updateStateVectors.add(new UpdateStateVector(q, m_prim, swim));
                 updateCovarianceMatrices.add(C);
-                //updateStateVectors.add(new UpdateStateVector(q_hat_minus.q, q_hat.m, swim));
-                //updateCovarianceMatrices.add(C_minus);
 
-                if (debug) printUpdateStateVector(new UpdateStateVector(q_hat_minus.q, m_prim, swim));
+                if (debug) printUpdateStateVector(new UpdateStateVector(q, m_prim, swim));
 
             }
 
@@ -274,7 +325,7 @@ public class KalmanFilter {
             extrapolateStateVectors.add(null);
             extrapolateCovarianceMatrices.add(null);
             Fs.add(null);
-            UpdateStateVector first = new UpdateStateVector(smoothStateVectors.get(0).q, measurementPoints.get(0),swim);
+            UpdateStateVector first = new UpdateStateVector(smoothStateVectors.get(0).q, measurementPoints.get(0), swim);
             updateStateVectors.add(first);
             updateCovarianceMatrices.add(smoothedCovarianceMatrices.get(0));
         }
@@ -337,7 +388,7 @@ public class KalmanFilter {
         C.setEntry(4, 4, tanL * tanL);
         */
 
-        RealMatrix C = MatrixUtils.createRealIdentityMatrix(5).scalarMultiply(0.00000001);
+        RealMatrix C = MatrixUtils.createRealIdentityMatrix(5).scalarMultiply(0.00000000001);
         updateCovarianceMatrices.add(C);
 
 
@@ -491,50 +542,6 @@ public class KalmanFilter {
 
     }
 
-    private ExtrapolateStateVector f1(UpdateStateVector q, MeasurementPoint m, MeasurementPoint m_prim){
-        double xo = m.xo;
-        double yo = m.yo;
-        double zo = m.zo;
-
-        double xo_prim = m_prim.xo;
-        double yo_prim = m_prim.yo;
-        double zo_prim = m_prim.zo;
-
-        double d_rho = q.d_rho();
-        double phi_0 = q.phi_0();
-        double kappa = q.kappa();
-        double d_z = q.d_z();
-        double tanL = q.tanL();
-
-        double alpha = q.alpha;
-
-        double Xc = xo + (d_rho + alpha/kappa) * Math.cos(phi_0);
-        double Yc = yo + (d_rho + alpha/kappa) * Math.sin(phi_0);
-
-        double fkappa = kappa;
-
-        double fphi_0 = 0;
-        if (fkappa > 0){ fphi_0 = Math.atan2((Yc-yo_prim),(Xc-xo_prim));}
-        if (fkappa < 0){ fphi_0 = Math.atan2((yo_prim-Yc),(xo_prim-Xc));}
-
-        double ftanL = tanL;
-
-        double fd_z = zo - zo_prim + d_z - (alpha/fkappa)*(fphi_0 - phi_0)*ftanL;
-
-        double fd_rho = (Xc-xo_prim)*Math.cos(fphi_0) + (Yc - yo_prim)*Math.sin(fphi_0) - (alpha/fkappa);
-
-        RealMatrix q_prim = MatrixUtils.createRealMatrix(5, 1);
-        q_prim.setColumn(0, new double[]{fd_rho, fphi_0, fkappa, fd_z, ftanL});
-
-        double x = xo_prim + fd_rho*Math.cos(fphi_0);
-        double y = yo_prim + fd_rho*Math.sin(fphi_0);
-        double z = zo_prim + d_z;
-
-        double path_length = Math.abs(Math.sqrt((alpha/ fkappa)*(alpha/ fkappa)*(ftanL+1)*(ftanL+1))*(fphi_0-phi_0))/10;
-
-        return new ExtrapolateStateVector(q_prim, m_prim, x, y, z, path_length, swim);
-    }
-
     private RealMatrix F(UpdateStateVector q, ExtrapolateStateVector q_prim) {
 
         double d_rho = q.d_rho();
@@ -612,18 +619,14 @@ public class KalmanFilter {
 
         double X0;
         if (k == 0) {
-            X0 = 125.98;
+            X0 = 125.98; // radiation length for Deuterium
         } else if (k == 1) {
-            X0 = 40.58;
+            X0 = 40.58; // radiation length for Kapton
         } else {
             X0 = 1 / (w_He / X0_He + w_C / X0_C + w_O / X0_O); // radiation length for gas mixture
         }
 
-        if (debug) System.out.println("X0 = " + X0);
-
         double pathLenght = q_prim.path_length;
-
-        if (debug) System.out.println("pathlength = " + pathLenght);
 
         double sctRMS = 0.0141 / (beta * p) * Math.sqrt(pathLenght / X0) * (1 + 1. / 9. * Math.log10(pathLenght / X0)); // Lynch-Dahl formula
 
@@ -650,12 +653,6 @@ public class KalmanFilter {
         return h;
     }
 
-    private RealMatrix h1(ExtrapolateStateVector q){
-        RealMatrix h = MatrixUtils.createRealMatrix(3, 1);
-        h.setColumn(0, new double[]{q.x, q.y, q.z});
-        return h;
-    }
-
     private RealMatrix H(UpdateStateVector q, MeasurementPoint m, MeasurementPoint m_prim) {
 
         RealMatrix H = MatrixUtils.createRealMatrix(3, 5);
@@ -674,33 +671,9 @@ public class KalmanFilter {
             ExtrapolateStateVector qPlus_prim = f(qPlus, m, m_prim);
             ExtrapolateStateVector qMinus_prim = f(qMinus, m, m_prim);
 
-            double dx_di = (qPlus_prim.x - qMinus_prim.x) / (2 * h);
-            double dy_di = (qPlus_prim.y - qMinus_prim.y) / (2 * h);
-            double dz_di = (qPlus_prim.z - qMinus_prim.z) / (2 * h);
-            H.setColumn(i, new double[]{dx_di, dy_di, dz_di});
-        }
-
-        return H;
-    }
-
-    private RealMatrix H1(UpdateStateVector q, MeasurementPoint m, MeasurementPoint m_prim){
-        RealMatrix H = MatrixUtils.createRealMatrix(3, 5);
-
-        double sqrt_epsilon = Math.sqrt(Math.ulp(1f));
-
-        if (debug) System.out.println("epsilon = " + sqrt_epsilon);
-
-        for (int i = 0; i < 5; i++) {
-            UpdateStateVector qPlus = new UpdateStateVector(q.q.copy(), m, swim);
-            UpdateStateVector qMinus = new UpdateStateVector(q.q.copy(), m, swim);
-
-            double h = sqrt_epsilon * (q.q.getEntry(i, 0));
-
-            qPlus.q.setEntry(i, 0, q.q.getEntry(i, 0) + h);
-            qMinus.q.setEntry(i, 0, q.q.getEntry(i, 0) - h);
-
-            ExtrapolateStateVector qPlus_prim = f1(qPlus, m, m_prim);
-            ExtrapolateStateVector qMinus_prim = f1(qMinus, m, m_prim);
+            //Energy loss :
+            if (energyLoss) energyLossInGasMixture(qPlus_prim);
+            if (energyLoss) energyLossInGasMixture(qMinus_prim);
 
             double dx_di = (qPlus_prim.x - qMinus_prim.x) / (2 * h);
             double dy_di = (qPlus_prim.y - qMinus_prim.y) / (2 * h);
@@ -727,6 +700,11 @@ public class KalmanFilter {
 
         double kappa_prim = q.kappa() * (p) / (Math.sqrt(p * p + 2 * E * DeltaE + DeltaE * DeltaE));
 
+        if (debug) System.out.println("path_length = " + path_length);
+        if (debug) System.out.println("DeltaE = " + DeltaE);
+        if (debug) System.out.println("kappa = " + q.kappa());
+        if (debug) System.out.println("kappa_prim = " + kappa_prim);
+
         q.set_kappa(kappa_prim);
 
     }
@@ -749,10 +727,13 @@ public class KalmanFilter {
 
         double kappa_prim = q.kappa() * (p) / (Math.sqrt(p * p + 2 * E * DeltaE + DeltaE * DeltaE));
 
+        if (debug) System.out.println("kappa = " + q.kappa());
+        if (debug) System.out.println("kappa_prim = " + kappa_prim);
+
         q.set_kappa(kappa_prim);
     }
 
-    private void energyLossInGasMixture(ExtrapolateStateVector q, int direction) {
+    private void energyLossInGasMixture(ExtrapolateStateVector q) {
 
         double path_length = q.path_length;
 
@@ -767,7 +748,6 @@ public class KalmanFilter {
         double w_CO2 = 0.2 * (A_C + 2 * A_O) / (0.8 * A_He + 0.2 * (A_C + 2 * A_O)); // weight fraction of the 2th element (CO2)
 
         double DeltaE = -(w_CO2 * 1.136E+02 + w_He * 1.360E+02) * rhoGasMixture * path_length / 1000; //GeV g cm-2
-        if (direction == -1){DeltaE = - DeltaE;}
 
         double pt = Math.abs(1. / q.kappa()); // GeV
         double pz = pt * q.tanL(); // GeV
@@ -778,9 +758,6 @@ public class KalmanFilter {
         double E = Math.sqrt(p * p + mass * mass);
 
         double kappa_prim = q.kappa() * (p) / (Math.sqrt(p * p + 2 * E * DeltaE + DeltaE * DeltaE));
-
-        System.out.println("kappa = " + q.kappa());
-        System.out.println("kappa_prim = " + kappa_prim);
 
         q.set_kappa(kappa_prim);
 

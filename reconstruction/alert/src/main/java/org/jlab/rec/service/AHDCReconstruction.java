@@ -72,7 +72,7 @@ public class AHDCReconstruction extends ReconstructionEngine {
 
             // Global fit
             HelixFitJava h = new HelixFitJava();
-            HelixFitObject ho = h.HelixFit(nbofpoint, szPos, 0);
+            HelixFitObject ho = h.HelixFit(nbofpoint, szPos, 1);
 
             trueHitList.add(0, new TrueHit(2212, ho.get_X0(), ho.get_Y0(), ho.get_Z0(), 0));
 
