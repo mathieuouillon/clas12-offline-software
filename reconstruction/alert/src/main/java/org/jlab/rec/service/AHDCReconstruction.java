@@ -80,7 +80,7 @@ public class AHDCReconstruction extends ReconstructionEngine {
             double[] starting = {ho.get_X0(), ho.get_Y0(), ho.get_Z0(), ho.get_px() / 1000, ho.get_py() / 1000, ho.get_pz() / 1000};
             if (ho.get_Mom() > 70. && ho.get_Mom() < 120. && Math.abs(starting[5]) < 0.07) {
                 KalmanFilter kf = new KalmanFilter(swimmer);
-                kf.runKalmanFilter(starting, recUtil.setMeasVecsGeant4(trueHitList), ho.get_Mom(), ho.get_Phi(), ho.get_Theta());
+                kf.runKalmanFilter(starting, recUtil.setMeasVecsGeant4(trueHitList), ho.get_Mom(), ho.get_Phi(), ho.get_Theta(),ho.get_Chi2());
             }
         }
 

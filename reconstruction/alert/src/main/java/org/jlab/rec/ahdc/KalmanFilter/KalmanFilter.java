@@ -18,7 +18,9 @@ public class KalmanFilter {
 
     boolean debug = false;
     boolean debug1 = false;
-    boolean energyLoss = false;
+    boolean energyLoss = true;
+
+    double chi2;
 
     RealMatrixFormat TABLE_FORMAT = new RealMatrixFormat("", "", "", "\n", "", ", ");
 
@@ -164,7 +166,7 @@ public class KalmanFilter {
         swim = swimmer;
     }
 
-    public void runKalmanFilter(double[] positionAndMomentumFromHelixFit, List<Surface> measSurfaces, double p_gf, double phi_gf, double theta_gf) {
+    public void runKalmanFilter(double[] positionAndMomentumFromHelixFit, List<Surface> measSurfaces, double p_gf, double phi_gf, double theta_gf, double chi2_gf) {
 
         initializationMeasurementList(measSurfaces);
 
@@ -172,7 +174,7 @@ public class KalmanFilter {
 
         double measurement_error = 0.1;
 
-        int numberOfIteration = 3;
+        int numberOfIteration = 5;
 
         for (int iteration = 0; iteration < numberOfIteration; iteration++) {
 
@@ -180,6 +182,8 @@ public class KalmanFilter {
                 System.out.println("Extrapolation and Filtering : ");
                 printUpdateStateVector(updateStateVectors.get(0));
             }
+
+            chi2 = 0;
 
             for (int k = 0; k < measurementPoints.size() - 1; k++) {
 
@@ -265,11 +269,21 @@ public class KalmanFilter {
                 RealMatrix q = q_hat_minus.q.add(K.multiply(y));
                 C = (I.subtract(K.multiply(H))).multiply(C_minus);
 
-
                 updateStateVectors.add(new UpdateStateVector(q, m_prim, swim));
                 updateCovarianceMatrices.add(C);
 
                 if (debug) printUpdateStateVector(new UpdateStateVector(q, m_prim, swim));
+
+                // Computation of chi2 :
+                RealMatrix diff_q = q.subtract(q_hat_minus.q);
+                RealMatrix G = MatrixUtils.inverse(R);
+                RealMatrix firstTerm = diff_q.transpose().multiply(MatrixUtils.inverse(C_minus)).multiply(diff_q);
+                RealMatrix diff_meas = y.subtract(H.multiply(diff_q));
+                RealMatrix secondTerm = diff_meas.transpose().multiply(G).multiply(diff_meas);
+
+                double incrementChi2 = firstTerm.getEntry(0,0) + secondTerm.getEntry(0,0);
+
+                chi2 += incrementChi2;
 
             }
 
@@ -331,7 +345,7 @@ public class KalmanFilter {
         }
 
 
-        output(p_gf, phi_gf, theta_gf);
+        output(p_gf, phi_gf, theta_gf, chi2_gf);
 
 
     }
@@ -371,30 +385,20 @@ public class KalmanFilter {
 
         updateStateVectors.add(q_hat);
 
-        /*
         RealMatrix C = MatrixUtils.createRealMatrix(5, 5);
-        C.setEntry(0, 0, d_rho * d_rho);
-        C.setEntry(1, 0, d_rho * phi_0);
-        C.setEntry(0, 1, d_rho * phi_0);
-        C.setEntry(2, 0, d_rho * kappa);
-        C.setEntry(0, 2, d_rho * kappa);
-        C.setEntry(2, 1, phi_0 * kappa);
-        C.setEntry(1, 2, phi_0 * kappa);
-        C.setEntry(1, 1, phi_0 * phi_0);
-        C.setEntry(2, 2, kappa * kappa);
-        C.setEntry(3, 3, d_z * d_z);
-        C.setEntry(3, 4, tanL * d_z);
-        C.setEntry(4, 3, tanL * d_z);
-        C.setEntry(4, 4, tanL * tanL);
-        */
 
-        RealMatrix C = MatrixUtils.createRealIdentityMatrix(5).scalarMultiply(0.00000000001);
+        C.setEntry(0, 0, 0.1);
+        C.setEntry(1, 1, 0.001);
+        C.setEntry(2, 2, 1);
+        C.setEntry(3, 3, 0.1);
+        C.setEntry(4, 4, 0.1);
+
         updateCovarianceMatrices.add(C);
 
 
     }
 
-    private void output(double p_gf, double phi_gf, double theta_gf) {
+    private void output(double p_gf, double phi_gf, double theta_gf, double chi2_gf) {
 
         double kappa = smoothStateVectors.get(0).kappa();
         double phi_0 = smoothStateVectors.get(0).phi_0();
@@ -416,7 +420,9 @@ public class KalmanFilter {
         if (debug) System.out.println("phi_gf = " + phi_gf);
         if (debug) System.out.println("phi_kf = " + phi_kf);
         if (debug) System.out.println("theta_gf = " + theta_gf);
-        if (debug) System.out.println("theta_kf = " + theta_kf + '\n');
+        if (debug) System.out.println("theta_kf = " + theta_kf);
+        if (debug) System.out.println("chi2_gf = " + chi2_gf);
+        if (debug) System.out.println("chi2_kf = " + chi2+ '\n');
 
         try {
             BufferedWriter writer = new BufferedWriter(new FileWriter("Geant4Info.txt", true));
@@ -426,6 +432,8 @@ public class KalmanFilter {
             writer.write("phi_kf = " + phi_kf + '\n');
             writer.write("theta_gf = " + theta_gf + '\n');
             writer.write("theta_kf = " + theta_kf + '\n');
+            writer.write("chi2_gf = " + chi2_gf + '\n');
+            writer.write("chi2_kf = " + chi2 + '\n');
             writer.write('\n');
             writer.close();
         } catch (IOException e) {
