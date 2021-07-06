@@ -1,5 +1,5 @@
 <evio_dictionary>
-    <bank name="AHDC" tag="2300" info="Simulated Hit Information">
+    <bank name="AHDC" tag="2300" info="Simulated AHDC Hit Information">
         <section name="true" tag="2301" num="0" info="True Values">
             <column name="pid"     num="1"  type="int32"   info="ID of the first particle entering the sensitive volume"/>
             <column name="mpid"    num="2"  type="int32"   info="ID of the mother of the first particle entering the sensitive volume"/>
@@ -34,6 +34,28 @@
             <column name="wire"   type="int32"  num="3" info="Wire Number"/>
             <column name="doca" type="float64" num="4" info="doca"/>
             <column name="adc" type="float64" num="6" info="adc"/>
+        </section>
+    </bank>
+    <bank name="ATOF" tag="2200" info="Simulated ATOF Hit Information">
+        <section name="dgtz" tag="2202" num="0" info="Digitized information">
+            <column name="sector"       type="int32"    num="1" info="sector" />
+            <column name="superlayer"   type="int32"    num="2" info="superlayer" />
+            <column name="layer"        type="int32"    num="3" info="layer" />
+            <column name="paddle"       type="int32"    num="4" info="paddle" />
+            <column name="adc_front"    type="float64"  num="5" info="adc_front"/>
+            <column name="adc_back"     type="float64"  num="6" info="adc_back"/>
+            <column name="adc_top"      type="float64"  num="7" info="adc_top"/>
+            <column name="tdc_front"    type="float64"  num="8" info="tdc_front"/>
+            <column name="tdc_back"     type="float64"  num="9" info="tdc_back"/>
+            <column name="tdc_top"      type="float64"  num="10" info="tdc_top"/>
+            <column name="time_front"   type="float64"  num="11" info="time_front"/>
+            <column name="time_back"    type="float64"  num="12" info="time_back"/>
+            <column name="time_top"     type="float64"  num="13" info="time_top"/>
+            <column name="E_tot_Front"  type="float64"  num="14" info="E_tot_Front"/>
+            <column name="E_tot_Back"   type="float64"  num="15" info="E_tot_Back"/>
+            <column name="E_tot_Top"    type="float64"  num="16" info="E_tot_Top"/>
+            <column name="totEdep_MC"   type="float64"  num="17" info="totEdep_MC"/>
+            <column name="hitn"         type="int32"    num="99"  info="Hit1 Number"/>
         </section>
     </bank>
 </evio_dictionary>
