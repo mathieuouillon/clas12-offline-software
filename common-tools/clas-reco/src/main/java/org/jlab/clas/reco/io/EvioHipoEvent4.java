@@ -64,6 +64,7 @@ public class EvioHipoEvent4 {
         this.fillHipoEventTrueInfo(hipoEvent, event);
         this.fillHipoEventTrigger(hipoEvent, event);
         this.fillHipoEventAHDC(hipoEvent, event);
+        this.fillHipoEventATOF(hipoEvent, event);
         return hipoEvent;
     }
     
@@ -83,7 +84,39 @@ public class EvioHipoEvent4 {
             hipoEvent.write(hipoTDC);
         }
     }
-    
+
+    public void fillHipoEventATOF(Event hipoEvent, EvioDataEvent evioEvent){
+        if(evioEvent.hasBank("ATOF::dgtz")==true){
+            EvioDataBank evioBank = (EvioDataBank) evioEvent.getBank("ATOF::dgtz");
+            Bank  hipoTDC = new Bank(schemaFactory.getSchema("ATOF::adc"), evioBank.rows());
+            for(int i = 0; i < evioBank.rows(); i++){
+                int index = i;
+                hipoTDC.putByte("sector",      index,  (byte)  evioBank.getInt("sector",i));
+                hipoTDC.putByte("superlayer", index,  (byte)  evioBank.getInt("superlayer",i));
+                hipoTDC.putByte("layer",      index,  (byte)  evioBank.getInt("layer",i));
+                hipoTDC.putByte("paddle",      index,  (byte)  evioBank.getInt("paddle",i));
+
+                hipoTDC.putFloat("adc_front",       index,  (float) evioBank.getDouble("adc_front", i));
+                hipoTDC.putFloat("adc_back",       index,  (float) evioBank.getDouble("adc_back", i));
+                hipoTDC.putFloat("adc_top",       index,  (float) evioBank.getDouble("adc_top", i));
+
+                hipoTDC.putFloat("tdc_front",       index,  (float) evioBank.getDouble("tdc_front", i));
+                hipoTDC.putFloat("tdc_back",       index,  (float) evioBank.getDouble("tdc_back", i));
+                hipoTDC.putFloat("tdc_top",       index,  (float) evioBank.getDouble("tdc_top", i));
+
+                hipoTDC.putFloat("time_front",       index,  (float) evioBank.getDouble("time_front", i));
+                hipoTDC.putFloat("time_back",       index,  (float) evioBank.getDouble("time_back", i));
+                hipoTDC.putFloat("time_top",       index,  (float) evioBank.getDouble("time_top", i));
+
+                hipoTDC.putFloat("E_tot_Front",       index,  (float) evioBank.getDouble("E_tot_Front", i));
+                hipoTDC.putFloat("E_tot_Back",       index,  (float) evioBank.getDouble("E_tot_Back", i));
+                hipoTDC.putFloat("E_tot_Top",       index,  (float) evioBank.getDouble("E_tot_Top", i));
+
+                hipoTDC.putFloat("totEdep_MC",       index,  (float) evioBank.getDouble("totEdep_MC", i));
+            }
+            hipoEvent.write(hipoTDC);
+        }
+    }
     
     
     public void fillHipoEventRF(Event hipoEvent, EvioDataEvent evioEvent){

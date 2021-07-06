@@ -28,6 +28,7 @@ public enum DetectorType {
     HEL       (20, "HEL"),
     BAND      (21, "BAND"),
     AHDC      (22, "AHDC"),
+    ATOF      (23, "ATOF"),
     TARGET    (100, "TARGET"),
     ECIN      (110, "ECIN"),
     ECOUT     (111, "ECOUT"),

@@ -506,5 +506,30 @@
       { "name":"adc"       , "type":"F", "info":"adc value"}
 
     ]
+  },
+  {
+    "name" : "ATOF::adc",
+    "group" : 23000,
+    "item" : 12,
+    "info": "ATOF bank for ALERT",
+    "entries":[
+      { "name":"sector", "type":"B", "info":"sector"},
+      { "name":"superlayer"     , "type":"B", "info":"superlayer"},
+      { "name":"layer", "type":"B", "info":"layer"},
+      { "name":"paddle"     , "type":"B", "info":"paddle"},
+      { "name":"adc_front"      , "type":"F", "info":"adc_front value"},
+      { "name":"adc_back"       , "type":"F", "info":"adc_back value"},
+      { "name":"adc_top"       , "type":"F", "info":"adc_top value"},
+      { "name":"tdc_front"      , "type":"F", "info":"tdc_front value"},
+      { "name":"tdc_back"       , "type":"F", "info":"tdc_back value"},
+      { "name":"tdc_top"       , "type":"F", "info":"tdc_top value"},
+      { "name":"time_front"      , "type":"F", "info":"time_front value"},
+      { "name":"time_back"       , "type":"F", "info":"time_back value"},
+      { "name":"time_top"       , "type":"F", "info":"time_top value"},
+      { "name":"E_tot_Front"      , "type":"F", "info":"E_tot_Front value"},
+      { "name":"E_tot_Back"       , "type":"F", "info":"E_tot_Back value"},
+      { "name":"E_tot_Top"       , "type":"F", "info":"E_tot_Top value"},
+      { "name":"totEdep_MC"       , "type":"F", "info":"totEdep_MC value"}
+    ]
   }
 ]
